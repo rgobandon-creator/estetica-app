@@ -1,0 +1,438 @@
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "../lib/supabase";
+import {
+  Sparkles, Calendar, Clock, User, Phone, Mail,
+  CheckCircle, ChevronLeft, ChevronRight,
+  Copy, Check, AlertCircle, ArrowRight, ArrowLeft,
+  Upload, Image, X
+} from "lucide-react";
+
+const SALON = {
+  nombre: "GlowSuite Salón",
+  descripcion: "Reserva tu cita en línea y asegura tu lugar con un abono de $5",
+  banco: "Banco Pichincha",
+  cuenta: "2207894561",
+  tipoCuenta: "Ahorro",
+  titular: "Zamia Proaño",
+  cedula: "1003456789",
+  whatsapp: "0997201131",
+};
+
+const SERVICIOS = [
+  { id: 1, nombre: "Corte de cabello", duracion: 45, precio: 15, emoji: "✂️" },
+  { id: 2, nombre: "Tinte completo", duracion: 120, precio: 40, emoji: "🎨" },
+  { id: 3, nombre: "Manicure clásico", duracion: 45, precio: 12, emoji: "💅" },
+  { id: 4, nombre: "Manicure gel", duracion: 60, precio: 18, emoji: "✨" },
+  { id: 5, nombre: "Tratamiento capilar", duracion: 90, precio: 35, emoji: "💆" },
+  { id: 6, nombre: "Peinado evento", duracion: 60, precio: 30, emoji: "👑" },
+  { id: 7, nombre: "Depilación facial", duracion: 30, precio: 12, emoji: "🌸" },
+  { id: 8, nombre: "Masaje relajante", duracion: 60, precio: 30, emoji: "🤲" },
+];
+
+const DIAS_HABIL = [1, 2, 3, 4, 5, 6];
+
+function generarHoras() {
+  const horas = [];
+  for (let h = 9; h < 19; h++) {
+    horas.push(`${String(h).padStart(2, "0")}:00`);
+    if (h < 18) horas.push(`${String(h).padStart(2, "0")}:30`);
+  }
+  return horas;
+}
+const HORAS = generarHoras();
+
+function generarDias() {
+  const dias = [];
+  const hoy = new Date();
+  for (let i = 1; i <= 30; i++) {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() + i);
+    if (DIAS_HABIL.includes(d.getDay())) {
+      dias.push({
+        fecha: d.toLocaleDateString("en-CA"),
+        label: d.toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "short" }),
+      });
+    }
+  }
+  return dias;
+}
+
+function Paso({ n, label, activo, completado }) {
+  return (
+    <div className={`flex items-center gap-2 ${activo ? "text-rose-600" : completado ? "text-green-600" : "text-gray-400"}`}>
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${activo ? "border-rose-500 bg-rose-50" : completado ? "border-green-500 bg-green-50" : "border-gray-200"}`}>
+        {completado ? <Check size={13} /> : n}
+      </div>
+      <span className="text-xs font-medium hidden sm:block">{label}</span>
+    </div>
+  );
+}
+
+function CopiarBtn({ texto }) {
+  const [copiado, setCopiado] = useState(false);
+  function copiar() {
+    navigator.clipboard.writeText(texto);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
+  return (
+    <button onClick={copiar} className="ml-2 text-rose-500 hover:text-rose-700">
+      {copiado ? <Check size={14} /> : <Copy size={14} />}
+    </button>
+  );
+}
+
+export default function ReservaPublica() {
+  const [paso, setPaso] = useState(1);
+  const [servicio, setServicio] = useState(null);
+  const [fecha, setFecha] = useState(null);
+  const [hora, setHora] = useState(null);
+  const [horasOcupadas, setHorasOcupadas] = useState([]);
+  const [form, setForm] = useState({ nombre: "", telefono: "", email: "", notas: "" });
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+  const [reservaId, setReservaId] = useState(null);
+  const [reservaUUID, setReservaUUID] = useState(null);
+  const [paginaDia, setPaginaDia] = useState(0);
+
+  // Comprobante
+  const [archivo, setArchivo] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [subiendoComprobante, setSubiendoComprobante] = useState(false);
+  const [comprobanteSubido, setComprobanteSubido] = useState(false);
+  const inputRef = useRef();
+
+  const dias = generarDias();
+  const DIAS_POR_PAGINA = 5;
+  const diasVisibles = dias.slice(paginaDia * DIAS_POR_PAGINA, (paginaDia + 1) * DIAS_POR_PAGINA);
+
+  useEffect(() => {
+    if (!fecha) return;
+    supabase.from("reservas_publicas").select("hora")
+      .eq("fecha", fecha).neq("estado", "cancelada")
+      .then(({ data }) => setHorasOcupadas((data || []).map(r => r.hora)));
+  }, [fecha]);
+
+  function seleccionarArchivo(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setArchivo(file);
+    setPreview(URL.createObjectURL(file));
+    setComprobanteSubido(false);
+  }
+
+  async function subirComprobante() {
+    if (!archivo || !reservaUUID) return;
+    setSubiendoComprobante(true);
+    const ext = archivo.name.split(".").pop();
+    const path = `${reservaUUID}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("comprobantes")
+      .upload(path, archivo, { upsert: true });
+
+    if (uploadError) {
+      alert("Error al subir imagen: " + uploadError.message);
+      setSubiendoComprobante(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("comprobantes").getPublicUrl(path);
+    await supabase.from("reservas_publicas")
+      .update({ comprobante_url: urlData.publicUrl })
+      .eq("id", reservaUUID);
+
+    setComprobanteSubido(true);
+    setSubiendoComprobante(false);
+  }
+
+  async function enviarReserva() {
+    if (!form.nombre || !form.telefono) { setError("Nombre y teléfono son obligatorios"); return; }
+    setCargando(true);
+    setError("");
+    const { data, error: err } = await supabase.from("reservas_publicas").insert([{
+      nombre: form.nombre,
+      telefono: form.telefono,
+      email: form.email,
+      servicio: servicio.nombre,
+      fecha, hora,
+      abono: 5,
+      notas: form.notas,
+      estado: "pendiente",
+    }]).select().single();
+    setCargando(false);
+    if (err) { setError("Error al registrar. Intenta de nuevo."); return; }
+    setReservaId(data.id.slice(0, 8).toUpperCase());
+    setReservaUUID(data.id);
+    setPaso(4);
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
+      <div className="bg-white border-b border-gray-100 px-4 py-4">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center">
+            <Sparkles size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="font-semibold text-gray-900 text-base">{SALON.nombre}</h1>
+            <p className="text-xs text-gray-400">Lun – Sáb · 9:00 AM – 7:00 PM</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-6">
+        {paso < 5 && (
+          <div className="flex items-center justify-between mb-6 bg-white rounded-xl p-4 border border-gray-100">
+            <Paso n={1} label="Servicio" activo={paso === 1} completado={paso > 1} />
+            <div className="flex-1 h-px bg-gray-200 mx-2" />
+            <Paso n={2} label="Horario" activo={paso === 2} completado={paso > 2} />
+            <div className="flex-1 h-px bg-gray-200 mx-2" />
+            <Paso n={3} label="Tus datos" activo={paso === 3} completado={paso > 3} />
+            <div className="flex-1 h-px bg-gray-200 mx-2" />
+            <Paso n={4} label="Pago" activo={paso === 4} completado={paso > 4} />
+          </div>
+        )}
+
+        {/* PASO 1 */}
+        {paso === 1 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">¿Qué servicio deseas?</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Selecciona uno para ver disponibilidad</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {SERVICIOS.map(s => (
+                <button key={s.id} onClick={() => { setServicio(s); setPaso(2); }}
+                  className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-rose-300 hover:bg-rose-50 transition-all text-left group">
+                  <span className="text-2xl">{s.emoji}</span>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 group-hover:text-rose-700">{s.nombre}</p>
+                    <p className="text-xs text-gray-400 mt-0.5"><Clock size={11} className="inline mr-1" />{s.duracion} min</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-rose-500 text-lg">${s.precio}</p>
+                    <p className="text-xs text-gray-400">abono $5</p>
+                  </div>
+                  <ArrowRight size={16} className="text-gray-300 group-hover:text-rose-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* PASO 2 */}
+        {paso === 2 && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setPaso(1)} className="p-2 hover:bg-white rounded-lg"><ArrowLeft size={18} className="text-gray-400" /></button>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Elige fecha y hora</h2>
+                <p className="text-sm text-gray-400">{servicio?.nombre} · {servicio?.duracion} min</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={() => setPaginaDia(p => Math.max(0, p - 1))} disabled={paginaDia === 0}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg disabled:opacity-30"><ChevronLeft size={16} className="text-gray-500" /></button>
+                <span className="text-xs font-medium text-gray-500">Próximos días disponibles</span>
+                <button onClick={() => setPaginaDia(p => p + 1)} disabled={(paginaDia + 1) * DIAS_POR_PAGINA >= dias.length}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg disabled:opacity-30"><ChevronRight size={16} className="text-gray-500" /></button>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {diasVisibles.map(d => (
+                  <button key={d.fecha} onClick={() => { setFecha(d.fecha); setHora(null); }}
+                    className={`flex flex-col items-center py-3 rounded-xl text-xs transition-all ${fecha === d.fecha ? "bg-rose-500 text-white font-semibold" : "hover:bg-rose-50 text-gray-600 bg-gray-50"}`}>
+                    {d.label.split(" ").map((p, i) => <span key={i} className={i === 1 ? "text-base font-bold" : ""}>{p}</span>)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {fecha && (
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <p className="text-xs font-medium text-gray-500 mb-3">Horas disponibles</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {HORAS.map(h => {
+                    const ocupada = horasOcupadas.includes(h);
+                    return (
+                      <button key={h} disabled={ocupada} onClick={() => setHora(h)}
+                        className={`py-2 rounded-lg text-sm font-medium transition-all ${ocupada ? "bg-gray-100 text-gray-300 cursor-not-allowed line-through" : hora === h ? "bg-rose-500 text-white" : "bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
+                        {h}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {fecha && hora && (
+              <button onClick={() => setPaso(3)}
+                className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 transition-colors flex items-center justify-center gap-2">
+                Continuar <ArrowRight size={16} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* PASO 3 */}
+        {paso === 3 && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setPaso(2)} className="p-2 hover:bg-white rounded-lg"><ArrowLeft size={18} className="text-gray-400" /></button>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Tus datos de contacto</h2>
+                <p className="text-sm text-gray-400">Para confirmar tu reserva</p>
+              </div>
+            </div>
+            <div className="bg-rose-50 rounded-xl p-4 border border-rose-100">
+              <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-2">Resumen</p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Servicio</span><span className="font-medium">{servicio?.nombre}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Fecha</span><span className="font-medium">{fecha && new Date(fecha + "T12:00:00").toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" })}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Hora</span><span className="font-medium">{hora}</span></div>
+                <div className="border-t border-rose-200 pt-2 mt-2 flex justify-between text-sm">
+                  <span className="text-gray-500">Abono a pagar ahora</span>
+                  <span className="font-bold text-rose-700">$5.00</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+              {[["nombre","Nombre completo *",User,"Ej: María Torres"],["telefono","Teléfono / WhatsApp *",Phone,"0987654321"],["email","Email (opcional)",Mail,"tu@email.com"]].map(([key, label, Icon, ph]) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
+                  <div className="relative">
+                    <Icon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input placeholder={ph} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})}
+                      className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" />
+                  </div>
+                </div>
+              ))}
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Notas (opcional)</label>
+                <textarea placeholder="Alergias, preferencias..." value={form.notas} onChange={e => setForm({...form, notas: e.target.value})} rows={2}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none" />
+              </div>
+            </div>
+            {error && <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-600"><AlertCircle size={15} />{error}</div>}
+            <button onClick={enviarReserva} disabled={cargando}
+              className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {cargando ? "Registrando..." : <><span>Ver instrucciones de pago</span><ArrowRight size={16} /></>}
+            </button>
+          </div>
+        )}
+
+        {/* PASO 4 — Pago + subir comprobante */}
+        {paso === 4 && (
+          <div className="space-y-5">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl">🏦</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Realiza el abono de $5</h2>
+              <p className="text-sm text-gray-400 mt-1">Transfiere y sube el comprobante aquí</p>
+            </div>
+
+            {/* Datos bancarios */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Datos para transferencia</p>
+              <div className="space-y-3">
+                {[
+                  ["Banco", SALON.banco],
+                  ["Tipo de cuenta", SALON.tipoCuenta],
+                  ["N° de cuenta", SALON.cuenta],
+                  ["Titular", SALON.titular],
+                  ["Cédula", SALON.cedula],
+                  ["Monto exacto", "$5.00"],
+                ].map(([label, valor]) => (
+                  <div key={label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <span className="text-xs text-gray-400">{label}</span>
+                    <div className="flex items-center">
+                      <span className={`text-sm font-medium ${label === "Monto exacto" ? "text-rose-600 font-bold" : "text-gray-800"}`}>{valor}</span>
+                      {["N° de cuenta", "Monto exacto"].includes(label) && <CopiarBtn texto={valor} />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Código */}
+            <div className="bg-rose-50 rounded-xl p-4 border border-rose-100 text-center">
+              <p className="text-xs text-rose-500 font-medium mb-1">Tu código de reserva</p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-2xl font-bold text-rose-700 tracking-widest">{reservaId}</p>
+                <CopiarBtn texto={reservaId} />
+              </div>
+            </div>
+
+            {/* Subir comprobante */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <p className="text-sm font-medium text-gray-700 mb-1">Sube tu comprobante de pago</p>
+              <p className="text-xs text-gray-400 mb-4">Foto o captura de la transferencia realizada</p>
+
+              {!preview ? (
+                <button onClick={() => inputRef.current.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-8 flex flex-col items-center gap-2 hover:border-rose-300 hover:bg-rose-50 transition-colors">
+                  <Upload size={24} className="text-gray-300" />
+                  <span className="text-sm text-gray-400">Toca para seleccionar imagen</span>
+                  <span className="text-xs text-gray-300">JPG, PNG o PDF</span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <img src={preview} alt="Comprobante" className="w-full rounded-xl border border-gray-100 max-h-48 object-cover" />
+                    {!comprobanteSubido && (
+                      <button onClick={() => { setArchivo(null); setPreview(null); }}
+                        className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full shadow flex items-center justify-center">
+                        <X size={14} className="text-gray-500" />
+                      </button>
+                    )}
+                  </div>
+                  {!comprobanteSubido ? (
+                    <button onClick={subirComprobante} disabled={subiendoComprobante}
+                      className="w-full py-2.5 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {subiendoComprobante ? "Subiendo..." : <><Upload size={15} /> Enviar comprobante</>}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg text-sm text-green-700">
+                      <CheckCircle size={16} className="text-green-500" />
+                      Comprobante enviado correctamente
+                    </div>
+                  )}
+                </div>
+              )}
+              <input ref={inputRef} type="file" accept="image/*,application/pdf" onChange={seleccionarArchivo} className="hidden" />
+            </div>
+
+            <button onClick={() => setPaso(5)}
+              className={`w-full py-3 rounded-xl font-medium transition-colors ${comprobanteSubido ? "bg-green-500 text-white hover:bg-green-600" : "border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm"}`}>
+              {comprobanteSubido ? "Ver confirmación →" : "Continuar sin comprobante"}
+            </button>
+          </div>
+        )}
+
+        {/* PASO 5 */}
+        {paso === 5 && (
+          <div className="text-center space-y-6 py-8">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+              <CheckCircle size={40} className="text-green-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">¡Reserva registrada!</h2>
+              <p className="text-sm text-gray-400 mt-2 max-w-xs mx-auto">
+                {comprobanteSubido
+                  ? "Revisaremos tu comprobante y recibirás confirmación por WhatsApp."
+                  : "En cuanto verifiquemos tu pago, recibirás confirmación por WhatsApp."}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-5 text-left space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Servicio</span><span className="font-medium">{servicio?.nombre}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Fecha</span><span className="font-medium">{fecha && new Date(fecha + "T12:00:00").toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" })}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Hora</span><span className="font-medium">{hora}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Código</span><span className="font-bold text-rose-600 tracking-widest">{reservaId}</span></div>
+            </div>
+            <button onClick={() => { setPaso(1); setServicio(null); setFecha(null); setHora(null); setForm({ nombre: "", telefono: "", email: "", notas: "" }); setArchivo(null); setPreview(null); setComprobanteSubido(false); }}
+              className="text-sm text-rose-500 hover:underline">Hacer otra reserva</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
