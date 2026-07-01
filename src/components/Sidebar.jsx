@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, Users, CreditCard,
-  Scissors, BarChart2, Settings, Sparkles, LogOut, CalendarCheck
+  Scissors, Settings, Sparkles, LogOut, CalendarCheck
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -35,7 +35,6 @@ export default function Sidebar({ user, onLogout }) {
     { to: "/clientes", icon: Users, label: "Clientes" },
     { to: "/cobros", icon: CreditCard, label: "Cobros" },
     { to: "/servicios", icon: Scissors, label: "Servicios" },
-    { to: "/reportes", icon: BarChart2, label: "Reportes" },
   ];
 
   return (
@@ -54,18 +53,12 @@ export default function Sidebar({ user, onLogout }) {
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {nav.map(({ to, icon: Icon, label, badge }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
+          <NavLink key={to} to={to} end={to === "/"}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? "bg-rose-50 text-rose-600 font-medium"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                isActive ? "bg-rose-50 text-rose-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
               }`
-            }
-          >
+            }>
             <Icon size={18} />
             <span className="flex-1">{label}</span>
             {badge > 0 && (
@@ -78,10 +71,8 @@ export default function Sidebar({ user, onLogout }) {
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-100 space-y-2">
-        <NavLink
-          to="/configuracion"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
-        >
+        <NavLink to="/configuracion"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors">
           <Settings size={18} />
           Configuración
         </NavLink>
@@ -93,11 +84,8 @@ export default function Sidebar({ user, onLogout }) {
             <p className="text-xs font-medium text-gray-700 truncate">{emailCorto}</p>
             <p className="text-xs text-gray-400">Admin</p>
           </div>
-          <button
-            onClick={onLogout}
-            className="p-1 hover:bg-red-50 rounded-lg transition-colors group"
-            title="Cerrar sesión"
-          >
+          <button onClick={onLogout}
+            className="p-1 hover:bg-red-50 rounded-lg transition-colors group" title="Cerrar sesión">
             <LogOut size={15} className="text-gray-400 group-hover:text-red-500" />
           </button>
         </div>
