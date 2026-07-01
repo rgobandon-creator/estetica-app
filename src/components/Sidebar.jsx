@@ -8,10 +8,16 @@ import { supabase } from "../lib/supabase";
 
 export default function Sidebar({ user, onLogout }) {
   const [pendientes, setPendientes] = useState(0);
+  const [nombreSalon, setNombreSalon] = useState("GlowSuite");
   const emailCorto = user?.email?.split("@")[0] || "Usuario";
   const iniciales = emailCorto.slice(0, 2).toUpperCase();
 
   useEffect(() => {
+    // Cargar nombre del salón
+    supabase.from("configuracion").select("valor").eq("clave","salon_config").single()
+      .then(({ data }) => { if (data?.valor?.nombre) setNombreSalon(data.valor.nombre); });
+
+    // Contar reservas pendientes
     async function contarPendientes() {
       try {
         const { count } = await supabase
@@ -19,9 +25,7 @@ export default function Sidebar({ user, onLogout }) {
           .select("*", { count: "exact", head: true })
           .eq("estado", "pendiente");
         setPendientes(count || 0);
-      } catch (e) {
-        setPendientes(0);
-      }
+      } catch (e) { setPendientes(0); }
     }
     contarPendientes();
     const interval = setInterval(contarPendientes, 30000);
@@ -45,7 +49,7 @@ export default function Sidebar({ user, onLogout }) {
             <Sparkles size={16} className="text-white" />
           </div>
           <div>
-            <p className="font-semibold text-gray-900 text-sm leading-tight">GlowSuite</p>
+            <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{nombreSalon}</p>
             <p className="text-xs text-gray-400">Panel de gestión</p>
           </div>
         </div>
@@ -57,8 +61,7 @@ export default function Sidebar({ user, onLogout }) {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive ? "bg-rose-50 text-rose-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-              }`
-            }>
+              }`}>
             <Icon size={18} />
             <span className="flex-1">{label}</span>
             {badge > 0 && (
