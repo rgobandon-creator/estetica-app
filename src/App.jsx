@@ -8,7 +8,6 @@ import Agenda from './pages/Agenda'
 import Clientes from './pages/Clientes'
 import Cobros from './pages/Cobros'
 import { Servicios } from './pages/Servicios'
-import Reportes from './pages/Reportes'
 import ReservaPublica from './pages/ReservaPublica'
 import ReservasAdmin from './pages/ReservasAdmin'
 import Configuracion from './pages/Configuracion'
@@ -24,7 +23,6 @@ function Layout({ user, onLogout }) {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/cobros" element={<Cobros />} />
           <Route path="/servicios" element={<Servicios />} />
-          <Route path="/reportes" element={<Reportes />} />
           <Route path="/reservas-admin" element={<ReservasAdmin />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="*" element={<Navigate to="/" />} />
