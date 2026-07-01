@@ -7,9 +7,11 @@ import Dashboard from './pages/Dashboard'
 import Agenda from './pages/Agenda'
 import Clientes from './pages/Clientes'
 import Cobros from './pages/Cobros'
-import { Servicios, Reportes } from './pages/Servicios'
+import { Servicios } from './pages/Servicios'
+import Reportes from './pages/Reportes'
 import ReservaPublica from './pages/ReservaPublica'
 import ReservasAdmin from './pages/ReservasAdmin'
+import Configuracion from './pages/Configuracion'
 
 function Layout({ user, onLogout }) {
   return (
@@ -24,6 +26,7 @@ function Layout({ user, onLogout }) {
           <Route path="/servicios" element={<Servicios />} />
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/reservas-admin" element={<ReservasAdmin />} />
+          <Route path="/configuracion" element={<Configuracion />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
@@ -51,26 +54,19 @@ export default function App() {
     setUser(null)
   }
 
-  if (cargando) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (cargando) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"/>
+    </div>
+  )
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Página pública — sin login */}
         <Route path="/reservar" element={<ReservaPublica />} />
-
-        {/* Panel admin — con login */}
         <Route path="/*" element={
-          user
-            ? <Layout user={user} onLogout={handleLogout} />
-            : <Login onLogin={setUser} />
-        } />
+          user ? <Layout user={user} onLogout={handleLogout}/> : <Login onLogin={setUser}/>
+        }/>
       </Routes>
     </BrowserRouter>
   )
