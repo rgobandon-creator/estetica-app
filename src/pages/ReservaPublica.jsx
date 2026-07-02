@@ -165,7 +165,7 @@ export default function ReservaPublica() {
       notas:form.notas, estado:"pendiente",
     }]).select().single();
     setCargando(false);
-    if (err) { setError("Error al registrar. Intenta de nuevo."); return; }
+    if (err) { setError("Error: " + err.message + " | Code: " + err.code); return; }
     setReservaId(data.id.slice(0,8).toUpperCase());
     setReservaUUID(data.id);
     setPaso(4);
