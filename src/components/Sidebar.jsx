@@ -12,12 +12,17 @@ export default function Sidebar({ user, onLogout }) {
   const emailCorto = user?.email?.split("@")[0] || "Usuario";
   const iniciales = emailCorto.slice(0, 2).toUpperCase();
 
-  useEffect(() => {
-    // Cargar nombre del salón
-    supabase.from("configuracion").select("valor").eq("clave","salon_config").single()
-      .then(({ data }) => { if (data?.valor?.nombre) setNombreSalon(data.valor.nombre); });
+  async function cargarNombre() {
+    const { data } = await supabase.from("configuracion").select("valor").eq("clave","salon_config").single();
+    if (data?.valor?.nombre) setNombreSalon(data.valor.nombre);
+  }
 
-    // Contar reservas pendientes
+  useEffect(() => {
+    cargarNombre();
+
+    // Escuchar evento cuando se guarda la configuración
+    window.addEventListener("salon_config_updated", cargarNombre);
+
     async function contarPendientes() {
       try {
         const { count } = await supabase
@@ -29,7 +34,11 @@ export default function Sidebar({ user, onLogout }) {
     }
     contarPendientes();
     const interval = setInterval(contarPendientes, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("salon_config_updated", cargarNombre);
+    };
   }, []);
 
   const nav = [
