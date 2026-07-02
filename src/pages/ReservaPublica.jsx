@@ -22,13 +22,33 @@ const CONFIG_DEFAULT = {
   abono_minimo: 5,
 };
 
-// Días hábiles según config
+const EMOJI_CATEGORIA = {
+  "Cabello": "✂️", "Uñas": "💅", "Depilación": "🌸",
+  "Spa": "🤲", "Maquillaje": "💄", "Otro": "✨"
+};
+
+function emojiPorNombre(nombre, categoria) {
+  if (categoria && EMOJI_CATEGORIA[categoria]) return EMOJI_CATEGORIA[categoria];
+  const n = nombre.toLowerCase();
+  if (n.includes("corte")) return "✂️";
+  if (n.includes("tinte") || n.includes("color")) return "🎨";
+  if (n.includes("manicure") || n.includes("uña")) return "💅";
+  if (n.includes("pedicure")) return "🦶";
+  if (n.includes("tratamiento") || n.includes("capilar")) return "💆";
+  if (n.includes("peinado")) return "👑";
+  if (n.includes("depilacion") || n.includes("depilación")) return "🌸";
+  if (n.includes("masaje")) return "🤲";
+  if (n.includes("maquillaje")) return "💄";
+  if (n.includes("facial") || n.includes("limpieza")) return "✨";
+  return "⭐";
+}
+
 const DIAS_MAP = { domingo:0, lunes:1, martes:2, "miércoles":3, jueves:4, viernes:5, sábado:6 };
 
 function generarHoras(inicio, fin) {
   const horas = [];
-  const [hi, mi] = inicio.split(":").map(Number);
-  const [hf, mf] = fin.split(":").map(Number);
+  const [hi] = inicio.split(":").map(Number);
+  const [hf] = fin.split(":").map(Number);
   for (let h = hi; h < hf; h++) {
     horas.push(`${String(h).padStart(2,"0")}:00`);
     horas.push(`${String(h).padStart(2,"0")}:30`);
@@ -94,7 +114,6 @@ export default function ReservaPublica() {
   const [comprobanteSubido, setComprobanteSubido] = useState(false);
   const inputRef = useRef();
 
-  // Cargar configuración y servicios desde Supabase
   useEffect(() => {
     supabase.from("configuracion").select("valor").eq("clave","salon_config").single()
       .then(({ data }) => { if (data?.valor) setConfig({ ...CONFIG_DEFAULT, ...data.valor }); });
@@ -102,10 +121,10 @@ export default function ReservaPublica() {
       .then(({ data }) => setServicios(data || []));
   }, []);
 
-  const HORAS = generarHoras(config.horario_inicio || "09:00", config.horario_fin || "19:00");
-  const dias = generarDias(config.dias || CONFIG_DEFAULT.dias);
+  const HORAS = generarHoras(config.horario_inicio||"09:00", config.horario_fin||"19:00");
+  const dias = generarDias(config.dias||CONFIG_DEFAULT.dias);
   const DIAS_POR_PAGINA = 5;
-  const diasVisibles = dias.slice(paginaDia * DIAS_POR_PAGINA, (paginaDia+1) * DIAS_POR_PAGINA);
+  const diasVisibles = dias.slice(paginaDia*DIAS_POR_PAGINA, (paginaDia+1)*DIAS_POR_PAGINA);
 
   useEffect(() => {
     if (!fecha) return;
@@ -124,12 +143,12 @@ export default function ReservaPublica() {
   }
 
   async function subirComprobante() {
-    if (!archivo || !reservaUUID) return;
+    if (!archivo||!reservaUUID) return;
     setSubiendoComprobante(true);
     const ext = archivo.name.split(".").pop();
     const path = `${reservaUUID}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("comprobantes").upload(path, archivo, { upsert:true });
-    if (uploadError) { alert("Error al subir: " + uploadError.message); setSubiendoComprobante(false); return; }
+    if (uploadError) { alert("Error al subir: "+uploadError.message); setSubiendoComprobante(false); return; }
     const { data: urlData } = supabase.storage.from("comprobantes").getPublicUrl(path);
     await supabase.from("reservas_publicas").update({ comprobante_url: urlData.publicUrl }).eq("id", reservaUUID);
     setComprobanteSubido(true);
@@ -137,14 +156,13 @@ export default function ReservaPublica() {
   }
 
   async function enviarReserva() {
-    if (!form.nombre || !form.telefono) { setError("Nombre y teléfono son obligatorios"); return; }
-    setCargando(true);
-    setError("");
+    if (!form.nombre||!form.telefono) { setError("Nombre y teléfono son obligatorios"); return; }
+    setCargando(true); setError("");
     const { data, error: err } = await supabase.from("reservas_publicas").insert([{
-      nombre: form.nombre, telefono: form.telefono, email: form.email,
-      servicio: servicio.nombre, fecha, hora,
-      abono: config.abono_minimo || 5,
-      notas: form.notas, estado: "pendiente",
+      nombre:form.nombre, telefono:form.telefono, email:form.email,
+      servicio:servicio.nombre, fecha, hora,
+      abono: config.abono_minimo||5,
+      notas:form.notas, estado:"pendiente",
     }]).select().single();
     setCargando(false);
     if (err) { setError("Error al registrar. Intenta de nuevo."); return; }
@@ -202,15 +220,16 @@ export default function ReservaPublica() {
             ) : servicios.map(s => (
               <button key={s.id} onClick={()=>{setServicio(s);setPaso(2);}}
                 className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-rose-300 hover:bg-rose-50 transition-all text-left group">
-                <div className="flex-1">
+                <span className="text-2xl flex-shrink-0">{emojiPorNombre(s.nombre, s.categoria)}</span>
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 group-hover:text-rose-700">{s.nombre}</p>
-                  <p className="text-xs text-gray-400 mt-0.5"><Clock size={11} className="inline mr-1"/>{s.duracion} min</p>
+                  <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Clock size={11}/>{s.duracion} min</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p className="font-semibold text-rose-500 text-lg">${Number(s.precio).toFixed(2)}</p>
                   <p className="text-xs text-gray-400">abono ${config.abono_minimo}</p>
                 </div>
-                <ArrowRight size={16} className="text-gray-300 group-hover:text-rose-400"/>
+                <ArrowRight size={16} className="text-gray-300 group-hover:text-rose-400 flex-shrink-0"/>
               </button>
             ))}
           </div>
@@ -259,7 +278,7 @@ export default function ReservaPublica() {
             )}
             {fecha&&hora&&(
               <button onClick={()=>setPaso(3)}
-                className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 transition-colors flex items-center justify-center gap-2">
+                className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 flex items-center justify-center gap-2">
                 Continuar <ArrowRight size={16}/>
               </button>
             )}
@@ -369,7 +388,7 @@ export default function ReservaPublica() {
               )}
               <input ref={inputRef} type="file" accept="image/*,application/pdf" onChange={seleccionarArchivo} className="hidden"/>
             </div>
-            <a href={`https://wa.me/593${config.whatsapp?.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Mi código de reserva es *${reservaId}*. Adjunto comprobante de transferencia de $${config.abono_minimo}.`}
+            <a href={`https://wa.me/593${config.whatsapp?.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Mi código de reserva es *${reservaId}*. Adjunto comprobante de $${config.abono_minimo}.`}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors">
               📲 Enviar comprobante por WhatsApp
