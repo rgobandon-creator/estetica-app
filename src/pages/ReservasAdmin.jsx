@@ -56,7 +56,6 @@ export default function ReservasAdmin() {
   async function cambiarEstado(id, nuevoEstado) {
     await supabase.from("reservas_publicas").update({ estado: nuevoEstado }).eq("id", id);
     const reserva = reservas.find(r => r.id === id);
-
     if (nuevoEstado === "confirmada" && reserva) {
       await supabase.from("citas").insert([{
         cliente: reserva.nombre,
@@ -69,7 +68,6 @@ export default function ReservasAdmin() {
         estado: "confirmada",
       }]);
     }
-
     if (reserva && reserva.telefono) {
       window.open(linkWhatsapp(reserva, nuevoEstado), "_blank");
     }
@@ -81,7 +79,6 @@ export default function ReservasAdmin() {
   return (
     <div className="p-6 space-y-5">
       {comprobanteVer && <ModalComprobante url={comprobanteVer} onClose={() => setComprobanteVer(null)} />}
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Reservas en línea</h1>
@@ -146,7 +143,6 @@ export default function ReservasAdmin() {
                 </div>
               </div>
 
-              {/* Ver comprobante */}
               {r.comprobante_url && (
                 <div className="mt-3 pt-3 border-t border-gray-50">
                   <button onClick={() => setComprobanteVer(r.comprobante_url)}
@@ -156,7 +152,6 @@ export default function ReservasAdmin() {
                 </div>
               )}
 
-              {/* Acciones */}
               {r.estado === "pendiente" && (
                 <div className="flex gap-2 mt-4 pt-4 border-t border-gray-50">
                   <button onClick={() => cambiarEstado(r.id, "confirmada")}
