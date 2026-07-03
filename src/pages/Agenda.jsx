@@ -205,7 +205,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
                 const ahora = new Date();
                 const esHoy = form.fecha === ahora.toLocaleDateString("en-CA");
                 const yaPaso = esHoy && inicio <= (ahora.getHours()*60 + ahora.getMinutes());
-                const ocupada = yaPaso || fin >= minutosDesde("19:00") || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
+                const ocupada = yaPaso || fin > minutosDesde("19:00") || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
                 return <button key={h} type="button" disabled={ocupada} onClick={()=>setForm({...form,hora:h})}
                   className={`py-2 rounded-lg text-xs font-medium transition-all ${ocupada?"bg-red-50 text-red-300 cursor-not-allowed line-through":form.hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                   {h}
