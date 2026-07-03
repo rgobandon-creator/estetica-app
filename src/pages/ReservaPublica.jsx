@@ -112,6 +112,7 @@ export default function ReservaPublica() {
   const [preview, setPreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
   const [comprobanteSubido, setComprobanteSubido] = useState(false);
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const inputRef = useRef();
 
   useEffect(() => {
@@ -181,15 +182,22 @@ export default function ReservaPublica() {
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center flex-shrink-0">
             <Sparkles size={20} className="text-white"/>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-gray-900 text-base">{config.nombre}</h1>
             <p className="text-xs text-gray-400">
               {config.dias?.slice(0,2).map(d=>d.charAt(0).toUpperCase()+d.slice(1)).join(" – ")} · {config.horario_inicio} – {config.horario_fin}
             </p>
           </div>
+          {config.whatsapp && (
+            <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors">
+              📲 <span className="hidden sm:inline">WhatsApp</span>
+            </a>
+          )}
         </div>
       </div>
 
@@ -323,10 +331,43 @@ export default function ReservaPublica() {
               </div>
             </div>
             {error&&<div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-600"><AlertCircle size={15}/>{error}</div>}
-            <button onClick={enviarReserva} disabled={cargando}
+            <button onClick={()=>{ if(!form.nombre||!form.telefono){setError("Nombre y teléfono son obligatorios");return;} setError(""); setMostrarConfirmacion(true); }} disabled={cargando}
               className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 disabled:opacity-50 flex items-center justify-center gap-2">
               {cargando?"Registrando...":<><span>Ver instrucciones de pago</span><ArrowRight size={16}/></>}
             </button>
+          </div>
+        )}
+
+        {/* MODAL DE CONFIRMACIÓN */}
+        {mostrarConfirmacion && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-2">
+                  <AlertCircle size={22} className="text-amber-500"/>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirma tu reserva</h3>
+                <p className="text-sm text-gray-400 mt-1">Verifica que tus datos sean correctos antes de continuar</p>
+              </div>
+              <div className="bg-rose-50 rounded-xl p-4 border border-rose-100 space-y-1.5">
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Servicio</span><span className="font-medium">{servicio?.nombre}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Fecha</span><span className="font-medium">{fecha&&new Date(fecha+"T12:00:00").toLocaleDateString("es-EC",{weekday:"long",day:"numeric",month:"long"})}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Hora</span><span className="font-medium">{hora}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Nombre</span><span className="font-medium">{form.nombre}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">WhatsApp</span><span className="font-medium">{form.telefono}</span></div>
+              </div>
+              <p className="text-xs text-gray-400 text-center">Al confirmar, se apartará este horario y deberás realizar el abono para asegurar tu cita.</p>
+              <div className="flex gap-3">
+                <button onClick={()=>setMostrarConfirmacion(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50">
+                  Revisar datos
+                </button>
+                <button onClick={()=>{ setMostrarConfirmacion(false); enviarReserva(); }} disabled={cargando}
+                  className="flex-1 py-2.5 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 disabled:opacity-50">
+                  {cargando?"Confirmando...":"Sí, confirmar"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
