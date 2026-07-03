@@ -65,7 +65,7 @@ function generarDias(diasHabiles) {
   const dias = [];
   const nums = diasHabiles.map(d => DIAS_MAP[d]).filter(n => n !== undefined);
   const hoy = new Date();
-  for (let i = 1; i <= 30; i++) {
+  for (let i = 0; i <= 30; i++) {
     const d = new Date(hoy);
     d.setDate(hoy.getDate() + i);
     if (nums.includes(d.getDay())) {
@@ -136,7 +136,7 @@ export default function ReservaPublica() {
     if (!fecha) return;
     Promise.all([
       supabase.from("citas").select("hora,duracion").eq("fecha",fecha).neq("estado","cancelada"),
-      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",fecha).neq("estado","cancelada"),
+      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",fecha).eq("estado","confirmada"),
     ]).then(([{data:c},{data:r}]) => {
       const duracionServicio = {};
       servicios.forEach(s => { duracionServicio[s.nombre] = s.duracion; });
@@ -294,7 +294,10 @@ export default function ReservaPublica() {
                     const inicio = minutosDesde(h);
                     const fin = inicio + (servicio?.duracion || 30);
                     const finHorario = minutosDesde(config.horario_fin || "19:00");
-                    const ocupada = fin > finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
+                    const ahora = new Date();
+                    const esHoy = fecha === ahora.toLocaleDateString("en-CA");
+                    const yaPaso = esHoy && inicio <= (ahora.getHours()*60 + ahora.getMinutes());
+                    const ocupada = yaPaso || fin > finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
                     return <button key={h} disabled={ocupada} onClick={()=>setHora(h)}
                       className={`py-2 rounded-lg text-sm font-medium transition-all ${ocupada?"bg-gray-100 text-gray-300 cursor-not-allowed line-through":hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                       {h}
