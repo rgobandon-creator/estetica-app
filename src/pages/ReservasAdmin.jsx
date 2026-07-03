@@ -35,6 +35,8 @@ function linkWhatsapp(r, estado) {
   const numero = r.telefono?.startsWith("0") ? r.telefono.slice(1) : r.telefono;
   return `https://wa.me/593${numero}?text=${encodeURIComponent(mensajeWhatsapp(r, estado))}`;
 }
+
+export default function ReservasAdmin() {
   const [reservas, setReservas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState("pendiente");
