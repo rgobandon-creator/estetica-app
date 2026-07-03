@@ -70,6 +70,11 @@ export default function ReservasAdmin() {
       }]);
     }
 
+    if (nuevoEstado === "cancelada" && reserva) {
+      await supabase.from("citas").update({ estado: "cancelada" })
+        .eq("cliente", reserva.nombre).eq("fecha", reserva.fecha).eq("hora", reserva.hora);
+    }
+
     if (reserva && reserva.telefono) {
       window.open(linkWhatsapp(reserva, nuevoEstado), "_blank");
     }
