@@ -45,6 +45,11 @@ function emojiPorNombre(nombre, categoria) {
 
 const DIAS_MAP = { domingo:0, lunes:1, martes:2, "miércoles":3, jueves:4, viernes:5, sábado:6 };
 
+function minutosDesde(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
 function generarHoras(inicio, fin) {
   const horas = [];
   const [hi] = inicio.split(":").map(Number);
@@ -101,7 +106,7 @@ export default function ReservaPublica() {
   const [servicio, setServicio] = useState(null);
   const [fecha, setFecha] = useState(null);
   const [hora, setHora] = useState(null);
-  const [horasOcupadas, setHorasOcupadas] = useState([]);
+  const [bloqueos, setBloqueos] = useState([]);
   const [form, setForm] = useState({ nombre:"", telefono:"", email:"", notas:"" });
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -130,10 +135,21 @@ export default function ReservaPublica() {
   useEffect(() => {
     if (!fecha) return;
     Promise.all([
-      supabase.from("citas").select("hora").eq("fecha",fecha).neq("estado","cancelada"),
-      supabase.from("reservas_publicas").select("hora").eq("fecha",fecha).neq("estado","cancelada"),
-    ]).then(([{data:c},{data:r}]) => setHorasOcupadas([...(c||[]),...(r||[])].map(x=>x.hora)));
-  }, [fecha]);
+      supabase.from("citas").select("hora,duracion").eq("fecha",fecha).neq("estado","cancelada"),
+      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",fecha).neq("estado","cancelada"),
+    ]).then(([{data:c},{data:r}]) => {
+      const duracionServicio = {};
+      servicios.forEach(s => { duracionServicio[s.nombre] = s.duracion; });
+      const items = [
+        ...(c||[]).map(x => ({ hora:x.hora, duracion: x.duracion || 60 })),
+        ...(r||[]).map(x => ({ hora:x.hora, duracion: duracionServicio[x.servicio] || 60 })),
+      ];
+      setBloqueos(items.map(x => {
+        const inicio = minutosDesde(x.hora);
+        return { inicio, fin: inicio + x.duracion };
+      }));
+    });
+  }, [fecha, servicios]);
 
   function seleccionarArchivo(e) {
     const file = e.target.files[0];
@@ -275,7 +291,10 @@ export default function ReservaPublica() {
                 <p className="text-xs font-medium text-gray-500 mb-3">Horas disponibles</p>
                 <div className="grid grid-cols-4 gap-2">
                   {HORAS.map(h=>{
-                    const ocupada=horasOcupadas.includes(h);
+                    const inicio = minutosDesde(h);
+                    const fin = inicio + (servicio?.duracion || 30);
+                    const finHorario = minutosDesde(config.horario_fin || "19:00");
+                    const ocupada = fin > finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
                     return <button key={h} disabled={ocupada} onClick={()=>setHora(h)}
                       className={`py-2 rounded-lg text-sm font-medium transition-all ${ocupada?"bg-gray-100 text-gray-300 cursor-not-allowed line-through":hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                       {h}

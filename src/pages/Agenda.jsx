@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 
 function fechaLocal(f) { const [y,m,d] = f.split("-").map(Number); return new Date(y,m-1,d); }
 function formatearFecha(f) { return fechaLocal(f).toLocaleDateString("es-EC",{weekday:"long",day:"numeric",month:"long"}); }
+function minutosDesde(hhmm) { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; }
 
 function EstadoBadge({ estado }) {
   const map = { confirmada:"bg-green-100 text-green-700", pendiente:"bg-amber-100 text-amber-700", cancelada:"bg-red-100 text-red-700", cobrada:"bg-blue-100 text-blue-700" };
@@ -71,7 +72,7 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
 function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   const [servicios, setServicios] = useState([]);
   const [clientes, setClientes] = useState([]);
-  const [horasOcupadas, setHorasOcupadas] = useState([]);
+  const [bloqueos, setBloqueos] = useState([]);
   const [clienteInfo, setClienteInfo] = useState(null);
   const [esNuevo, setEsNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ telefono:"", email:"", alergias:"Ninguna" });
@@ -97,10 +98,21 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   useEffect(()=>{
     if(!form.fecha)return;
     Promise.all([
-      supabase.from("citas").select("hora").eq("fecha",form.fecha).neq("estado","cancelada"),
-      supabase.from("reservas_publicas").select("hora").eq("fecha",form.fecha).eq("estado","confirmada")
-    ]).then(([{data:c},{data:r}])=>setHorasOcupadas([...(c||[]),...(r||[])].map(x=>x.hora)));
-  },[form.fecha]);
+      supabase.from("citas").select("hora,duracion").eq("fecha",form.fecha).neq("estado","cancelada"),
+      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",form.fecha).eq("estado","confirmada")
+    ]).then(([{data:c},{data:r}])=>{
+      const duracionServicio={};
+      servicios.forEach(s=>{duracionServicio[s.nombre]=s.duracion;});
+      const items=[
+        ...(c||[]).map(x=>({hora:x.hora,duracion:x.duracion||60})),
+        ...(r||[]).map(x=>({hora:x.hora,duracion:duracionServicio[x.servicio]||60})),
+      ];
+      setBloqueos(items.map(x=>{
+        const inicio=minutosDesde(x.hora);
+        return {inicio,fin:inicio+x.duracion};
+      }));
+    });
+  },[form.fecha, servicios]);
 
   function seleccionarCliente(nombre){
     setForm(f=>({...f,cliente:nombre}));
@@ -188,7 +200,9 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
             </label>
             <div className="grid grid-cols-4 gap-2">
               {HORAS.map(h=>{
-                const ocupada=horasOcupadas.includes(h);
+                const inicio = minutosDesde(h);
+                const fin = inicio + (form.duracion || 60);
+                const ocupada = fin > minutosDesde("19:00") || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
                 return <button key={h} type="button" disabled={ocupada} onClick={()=>setForm({...form,hora:h})}
                   className={`py-2 rounded-lg text-xs font-medium transition-all ${ocupada?"bg-red-50 text-red-300 cursor-not-allowed line-through":form.hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                   {h}
