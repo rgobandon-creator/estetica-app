@@ -54,20 +54,43 @@ export default function ReservasAdmin() {
   useEffect(() => { cargar(); }, [filtro]);
 
   async function cambiarEstado(id, nuevoEstado) {
-    await supabase.from("reservas_publicas").update({ estado: nuevoEstado }).eq("id", id);
     const reserva = reservas.find(r => r.id === id);
 
+    let citaExistente = null;
     if (nuevoEstado === "confirmada" && reserva) {
-      await supabase.from("citas").insert([{
-        cliente: reserva.nombre,
-        servicio: reserva.servicio,
-        profesional: "Por asignar",
-        fecha: reserva.fecha,
-        hora: reserva.hora,
-        duracion: 60,
-        precio: reserva.abono,
-        estado: "confirmada",
-      }]);
+      const { data } = await supabase.from("citas").select("id")
+        .eq("cliente", reserva.nombre).eq("fecha", reserva.fecha).eq("hora", reserva.hora).maybeSingle();
+      citaExistente = data;
+
+      const { data: conflictos } = await supabase.from("citas").select("id,cliente")
+        .eq("fecha", reserva.fecha).eq("hora", reserva.hora).neq("estado", "cancelada");
+      const conflicto = (conflictos || []).find(c => c.id !== citaExistente?.id);
+
+      if (conflicto) {
+        const continuar = window.confirm(
+          `⚠️ Ya existe otra cita a las ${reserva.hora} (${conflicto.cliente}). Si confirmas, quedarán dos citas cruzadas en ese horario.\n\n¿Confirmar de todas formas?`
+        );
+        if (!continuar) return;
+      }
+    }
+
+    await supabase.from("reservas_publicas").update({ estado: nuevoEstado }).eq("id", id);
+
+    if (nuevoEstado === "confirmada" && reserva) {
+      if (citaExistente) {
+        await supabase.from("citas").update({ estado: "confirmada" }).eq("id", citaExistente.id);
+      } else {
+        await supabase.from("citas").insert([{
+          cliente: reserva.nombre,
+          servicio: reserva.servicio,
+          profesional: "Por asignar",
+          fecha: reserva.fecha,
+          hora: reserva.hora,
+          duracion: 60,
+          precio: reserva.abono,
+          estado: "confirmada",
+        }]);
+      }
     }
 
     if (nuevoEstado === "cancelada" && reserva) {
@@ -185,11 +208,15 @@ export default function ReservasAdmin() {
                 </div>
               )}
               {r.estado === "cancelada" && (
-                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
                   <a href={linkWhatsapp(r, "cancelada")} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 font-medium">
                     📲 Reenviar aviso
                   </a>
+                  <button onClick={() => cambiarEstado(r.id, "confirmada")}
+                    className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium">
+                    <CheckCircle size={13} /> Confirmar de nuevo
+                  </button>
                 </div>
               )}
             </div>
