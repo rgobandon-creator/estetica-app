@@ -297,7 +297,7 @@ export default function ReservaPublica() {
                     const ahora = new Date();
                     const esHoy = fecha === ahora.toLocaleDateString("en-CA");
                     const yaPaso = esHoy && inicio <= (ahora.getHours()*60 + ahora.getMinutes());
-                    const ocupada = yaPaso || fin > finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
+                    const ocupada = yaPaso || fin >= finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
                     return <button key={h} disabled={ocupada} onClick={()=>setHora(h)}
                       className={`py-2 rounded-lg text-sm font-medium transition-all ${ocupada?"bg-gray-100 text-gray-300 cursor-not-allowed line-through":hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                       {h}
