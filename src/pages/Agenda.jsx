@@ -272,6 +272,9 @@ export default function Agenda() {
 
   useEffect(()=>{cargarCitas();},[diaSeleccionado]);
 
+  const citasActivas = citas.filter(c=>c.estado!=="cancelada");
+  const citasCanceladas = citas.filter(c=>c.estado==="cancelada");
+
   return (
     <div className="p-6 space-y-5">
       {modal && <NuevaCitaModal onClose={()=>setModal(false)} onGuardada={cargarCitas} fechaInicial={diaSeleccionado}/>}
@@ -308,16 +311,16 @@ export default function Agenda() {
 
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <h2 className="font-medium text-gray-900 text-sm mb-4">
-          {cargando?"Cargando...":`${citas.length} cita${citas.length!==1?"s":""} este día`}
+          {cargando?"Cargando...":`${citasActivas.length} cita${citasActivas.length!==1?"s":""} este día`}
         </h2>
-        {!cargando&&citas.length===0?(
+        {!cargando&&citasActivas.length===0?(
           <div className="text-center py-10 text-gray-400">
             <p className="text-sm">No hay citas agendadas</p>
             <button onClick={()=>setModal(true)} className="mt-3 text-rose-500 text-sm hover:underline">+ Agregar cita</button>
           </div>
         ):(
           <div className="space-y-3">
-            {citas.map(c=>(
+            {citasActivas.map(c=>(
               <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors">
                 <div className="flex-shrink-0 text-center w-14">
                   <p className="text-sm font-semibold text-rose-500">{c.hora}</p>
@@ -349,6 +352,32 @@ export default function Agenda() {
           </div>
         )}
       </div>
+
+      {citasCanceladas.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <h2 className="font-medium text-gray-400 text-xs mb-3">
+            {citasCanceladas.length} cita{citasCanceladas.length!==1?"s":""} cancelada{citasCanceladas.length!==1?"s":""}
+          </h2>
+          <div className="space-y-2">
+            {citasCanceladas.map(c=>(
+              <div key={c.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 opacity-60">
+                <div className="flex-shrink-0 text-center w-14">
+                  <p className="text-sm font-medium text-gray-400 line-through">{c.hora}</p>
+                </div>
+                <div className="w-px h-8 bg-gray-200"/>
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 flex-shrink-0">
+                  {c.cliente?.slice(0,2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-500 line-through">{c.cliente}</p>
+                  <p className="text-xs text-gray-400">{c.servicio}</p>
+                </div>
+                <EstadoBadge estado={c.estado}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
