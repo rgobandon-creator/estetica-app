@@ -21,7 +21,20 @@ function ModalComprobante({ url, onClose }) {
   );
 }
 
-export default function ReservasAdmin() {
+function mensajeWhatsapp(r, estado) {
+  if (estado === "confirmada") {
+    return `Hola ${r.nombre}! Tu cita para *${r.servicio}* el ${r.fecha} a las ${r.hora} ha sido *confirmada*. ¡Te esperamos!`;
+  }
+  if (estado === "cancelada") {
+    return `Hola ${r.nombre}, lamentamos informarte que tu cita para *${r.servicio}* el ${r.fecha} a las ${r.hora} ha sido *cancelada*. Si deseas reagendar, contáctanos por este medio.`;
+  }
+  return `Hola ${r.nombre}! Te contactamos sobre tu cita para *${r.servicio}* el ${r.fecha} a las ${r.hora}.`;
+}
+
+function linkWhatsapp(r, estado) {
+  const numero = r.telefono?.startsWith("0") ? r.telefono.slice(1) : r.telefono;
+  return `https://wa.me/593${numero}?text=${encodeURIComponent(mensajeWhatsapp(r, estado))}`;
+}
   const [reservas, setReservas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState("pendiente");
@@ -40,21 +53,23 @@ export default function ReservasAdmin() {
 
   async function cambiarEstado(id, nuevoEstado) {
     await supabase.from("reservas_publicas").update({ estado: nuevoEstado }).eq("id", id);
+    const reserva = reservas.find(r => r.id === id);
 
-    if (nuevoEstado === "confirmada") {
-      const reserva = reservas.find(r => r.id === id);
-      if (reserva) {
-        await supabase.from("citas").insert([{
-          cliente: reserva.nombre,
-          servicio: reserva.servicio,
-          profesional: "Por asignar",
-          fecha: reserva.fecha,
-          hora: reserva.hora,
-          duracion: 60,
-          precio: reserva.abono,
-          estado: "confirmada",
-        }]);
-      }
+    if (nuevoEstado === "confirmada" && reserva) {
+      await supabase.from("citas").insert([{
+        cliente: reserva.nombre,
+        servicio: reserva.servicio,
+        profesional: "Por asignar",
+        fecha: reserva.fecha,
+        hora: reserva.hora,
+        duracion: 60,
+        precio: reserva.abono,
+        estado: "confirmada",
+      }]);
+    }
+
+    if (reserva && reserva.telefono) {
+      window.open(linkWhatsapp(reserva, nuevoEstado), "_blank");
     }
     cargar();
   }
@@ -150,17 +165,24 @@ export default function ReservasAdmin() {
                     className="flex-1 py-2 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition-colors flex items-center justify-center gap-1">
                     <XCircle size={13} /> Cancelar
                   </button>
-                  <a href={`https://wa.me/593${r.telefono?.startsWith("0") ? r.telefono.slice(1) : r.telefono}?text=Hola ${r.nombre}! Tu cita para *${r.servicio}* el ${r.fecha} a las ${r.hora} ha sido *confirmada*. ¡Te esperamos!`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="px-3 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-medium hover:bg-green-100 transition-colors">
-                    📲
-                  </a>
                 </div>
               )}
               {r.estado === "confirmada" && (
-                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+                  <a href={linkWhatsapp(r, "confirmada")} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium">
+                    📲 Reenviar confirmación
+                  </a>
                   <button onClick={() => cambiarEstado(r.id, "cancelada")}
                     className="text-xs text-red-400 hover:text-red-600">Cancelar reserva</button>
+                </div>
+              )}
+              {r.estado === "cancelada" && (
+                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                  <a href={linkWhatsapp(r, "cancelada")} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 font-medium">
+                    📲 Reenviar aviso
+                  </a>
                 </div>
               )}
             </div>
