@@ -14,14 +14,25 @@ function EstadoBadge({ estado }) {
 function RegistrarCobroModal({ cita, onClose, onGuardado }) {
   const [metodo, setMetodo] = useState("Efectivo");
   const [monto, setMonto] = useState(cita.precio || 0);
+  const [pagoPendienteId, setPagoPendienteId] = useState(null);
   const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    supabase.from("pagos").select("id,monto").eq("cliente", cita.cliente).eq("servicio", cita.servicio)
+      .eq("estado", "pendiente").limit(1).maybeSingle()
+      .then(({ data }) => { if (data) { setPagoPendienteId(data.id); setMonto(data.monto); } });
+  }, []);
 
   async function cobrar() {
     setCargando(true);
-    await supabase.from("pagos").insert([{
-      cliente: cita.cliente, servicio: cita.servicio,
-      monto: Number(monto), metodo, estado: "pagado"
-    }]);
+    if (pagoPendienteId) {
+      await supabase.from("pagos").update({ monto: Number(monto), metodo, estado: "pagado" }).eq("id", pagoPendienteId);
+    } else {
+      await supabase.from("pagos").insert([{
+        cliente: cita.cliente, servicio: cita.servicio,
+        monto: Number(monto), metodo, estado: "pagado"
+      }]);
+    }
     await supabase.from("citas").update({ estado: "cobrada" }).eq("id", cita.id);
     setCargando(false);
     onGuardado();
@@ -44,6 +55,7 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
             <label className="text-xs font-medium text-gray-500 block mb-1">Monto a cobrar ($)</label>
             <input type="number" value={monto} onChange={e => setMonto(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+            {pagoPendienteId && <p className="text-xs text-amber-600 mt-1">Saldo pendiente tras el abono ya pagado</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-2">Método de pago</label>

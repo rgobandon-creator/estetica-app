@@ -38,9 +38,14 @@ function linkWhatsapp(r, estado) {
 
 export default function ReservasAdmin() {
   const [reservas, setReservas] = useState([]);
+  const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState("pendiente");
   const [comprobanteVer, setComprobanteVer] = useState(null);
+
+  useEffect(() => {
+    supabase.from("servicios").select("nombre,precio").then(({ data }) => setServicios(data || []));
+  }, []);
 
   async function cargar() {
     setCargando(true);
@@ -80,6 +85,9 @@ export default function ReservasAdmin() {
       if (citaExistente) {
         await supabase.from("citas").update({ estado: "confirmada" }).eq("id", citaExistente.id);
       } else {
+        const precioServicio = servicios.find(s => s.nombre === reserva.servicio)?.precio;
+        const abono = Number(reserva.abono) || 0;
+
         await supabase.from("citas").insert([{
           cliente: reserva.nombre,
           servicio: reserva.servicio,
@@ -87,9 +95,21 @@ export default function ReservasAdmin() {
           fecha: reserva.fecha,
           hora: reserva.hora,
           duracion: 60,
-          precio: reserva.abono,
+          precio: precioServicio || abono,
           estado: "confirmada",
         }]);
+
+        await supabase.from("pagos").insert([{
+          cliente: reserva.nombre, servicio: reserva.servicio,
+          monto: abono, metodo: "Transferencia", estado: "pagado",
+        }]);
+
+        if (precioServicio && precioServicio > abono) {
+          await supabase.from("pagos").insert([{
+            cliente: reserva.nombre, servicio: reserva.servicio,
+            monto: precioServicio - abono, metodo: "Efectivo", estado: "pendiente",
+          }]);
+        }
       }
     }
 
