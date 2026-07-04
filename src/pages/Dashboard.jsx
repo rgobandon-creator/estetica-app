@@ -34,6 +34,7 @@ function EstadoBadge({ estado }) {
 export default function Dashboard() {
   const [citas, setCitas] = useState([]);
   const [pagos, setPagos] = useState([]);
+  const [todosPagos, setTodosPagos] = useState([]);
   const [totalClientes, setTotalClientes] = useState(0);
   const [cargando, setCargando] = useState(true);
 
@@ -43,21 +44,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function cargarDatos() {
-      const [{ data: citasHoy }, { data: pagosData }, { count }] = await Promise.all([
+      const [{ data: citasHoy }, { data: pagosRecientes }, { data: pagosTodos }, { count }] = await Promise.all([
         supabase.from("citas").select("*").eq("fecha", hoy).order("hora"),
         supabase.from("pagos").select("*").order("created_at", { ascending: false }).limit(5),
+        supabase.from("pagos").select("*"),
         supabase.from("clientes").select("*", { count: "exact", head: true }),
       ]);
       setCitas(citasHoy || []);
-      setPagos(pagosData || []);
+      setPagos(pagosRecientes || []);
+      setTodosPagos(pagosTodos || []);
       setTotalClientes(count || 0);
       setCargando(false);
     }
     cargarDatos();
   }, []);
 
-  const ingresosMes = pagos.filter(p => p.estado === "pagado").reduce((s, p) => s + Number(p.monto), 0);
-  const pendientes = pagos.filter(p => p.estado === "pendiente").reduce((s, p) => s + Number(p.monto), 0);
+  const ingresosMes = todosPagos.filter(p => p.estado === "pagado").reduce((s, p) => s + Number(p.monto), 0);
+  const pendientes = todosPagos.filter(p => p.estado === "pendiente").reduce((s, p) => s + Number(p.monto), 0);
 
   if (cargando) {
     return (
