@@ -17,6 +17,11 @@ const DEFAULT_CONFIG = {
   titular: "Valeria Suárez",
   cedula: "1003456789",
   abono_minimo: 5,
+  direccion: "",
+  google_maps_url: "",
+  instagram: "",
+  facebook: "",
+  tiktok: "",
 };
 
 const DIAS_SEMANA = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
@@ -115,6 +120,41 @@ export default function Configuracion() {
         <div>
           <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp</label>
           <input value={config.whatsapp} onChange={e=>setConfig({...config,whatsapp:e.target.value})}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Dirección (en palabras)</label>
+          <input value={config.direccion} onChange={e=>setConfig({...config,direccion:e.target.value})}
+            placeholder="Ej: Av. Mariano Acosta y Sánchez y Cifuentes, Ibarra"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Link de Google Maps (opcional)</label>
+          <input value={config.google_maps_url} onChange={e=>setConfig({...config,google_maps_url:e.target.value})}
+            placeholder="https://maps.app.goo.gl/..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+        </div>
+      </div>
+
+      {/* Redes sociales */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+        <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2"><Sparkles size={15} className="text-rose-400"/>Redes sociales</h2>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Instagram (usuario o link)</label>
+          <input value={config.instagram} onChange={e=>setConfig({...config,instagram:e.target.value})}
+            placeholder="@tunegocio o https://instagram.com/tunegocio"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">Facebook (usuario o link)</label>
+          <input value={config.facebook} onChange={e=>setConfig({...config,facebook:e.target.value})}
+            placeholder="https://facebook.com/tunegocio"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 block mb-1">TikTok (usuario o link)</label>
+          <input value={config.tiktok} onChange={e=>setConfig({...config,tiktok:e.target.value})}
+            placeholder="@tunegocio"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
         </div>
       </div>

@@ -20,12 +20,27 @@ const CONFIG_DEFAULT = {
   titular: "Valeria Suárez",
   cedula: "1003456789",
   abono_minimo: 5,
+  direccion: "",
+  google_maps_url: "",
+  instagram: "",
+  facebook: "",
+  tiktok: "",
 };
 
 const EMOJI_CATEGORIA = {
   "Cabello": "✂️", "Uñas": "💅", "Depilación": "🌸",
   "Spa": "🤲", "Maquillaje": "💄", "Otro": "✨"
 };
+
+function linkRedSocial(valor, tipo) {
+  if (!valor) return null;
+  if (valor.startsWith("http")) return valor;
+  const usuario = valor.replace("@", "").trim();
+  if (tipo === "instagram") return `https://instagram.com/${usuario}`;
+  if (tipo === "facebook") return `https://facebook.com/${usuario}`;
+  if (tipo === "tiktok") return `https://tiktok.com/@${usuario}`;
+  return valor;
+}
 
 function emojiPorNombre(nombre, categoria) {
   if (categoria && EMOJI_CATEGORIA[categoria]) return EMOJI_CATEGORIA[categoria];
@@ -113,6 +128,7 @@ export default function ReservaPublica() {
   const [reservaId, setReservaId] = useState(null);
   const [reservaUUID, setReservaUUID] = useState(null);
   const [paginaDia, setPaginaDia] = useState(0);
+  const [categoriaAbierta, setCategoriaAbierta] = useState(null);
   const [archivo, setArchivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
@@ -217,7 +233,8 @@ export default function ReservaPublica() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6 lg:flex lg:gap-8 lg:items-start">
+        <div className="max-w-lg w-full mx-auto lg:mx-0">
         {paso < 5 && (
           <div className="flex items-center justify-between mb-6 bg-white rounded-xl p-4 border border-gray-100">
             <Paso n={1} label="Servicio" activo={paso===1} completado={paso>1}/>
@@ -484,7 +501,58 @@ export default function ReservaPublica() {
             <button onClick={resetear} className="text-sm text-rose-500 hover:underline">Hacer otra reserva</button>
           </div>
         )}
+        </div>
+
+        {(config.instagram || config.facebook || config.tiktok) && (
+          <aside className="hidden lg:block w-64 flex-shrink-0 sticky top-6">
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Síguenos</h3>
+              <div className="space-y-2">
+                {config.instagram && (
+                  <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-rose-500 transition-colors">
+                    📷 Instagram
+                  </a>
+                )}
+                {config.facebook && (
+                  <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-rose-500 transition-colors">
+                    👍 Facebook
+                  </a>
+                )}
+                {config.tiktok && (
+                  <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-rose-500 transition-colors">
+                    🎵 TikTok
+                  </a>
+                )}
+              </div>
+            </div>
+          </aside>
+        )}
       </div>
+
+      {/* Redes sociales en móvil (debajo del contenido) */}
+      {(config.instagram || config.facebook || config.tiktok) && (
+        <div className="lg:hidden max-w-lg mx-auto px-4 pb-2 flex items-center justify-center gap-5">
+          {config.instagram && <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-rose-500">📷 Instagram</a>}
+          {config.facebook && <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-rose-500">👍 Facebook</a>}
+          {config.tiktok && <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-rose-500">🎵 TikTok</a>}
+        </div>
+      )}
+
+      {/* Pie de página con dirección */}
+      {config.direccion && (
+        <div className="text-center px-4 pb-8 pt-2">
+          <p className="text-xs text-gray-400">📍 {config.direccion}</p>
+          {config.google_maps_url && (
+            <a href={config.google_maps_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-rose-500 hover:underline">
+              Ver ubicación en el mapa
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
