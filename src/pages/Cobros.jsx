@@ -77,6 +77,7 @@ function NuevoCobro({ onClose, onGuardado }) {
 export default function Cobros() {
   const [pagos, setPagos] = useState([]);
   const [modal, setModal] = useState(false);
+  const [cobrando, setCobrando] = useState(null);
 
   async function cargar() {
     const { data } = await supabase.from("pagos").select("*").order("created_at", { ascending: false });
@@ -88,13 +89,32 @@ export default function Cobros() {
   const total = pagos.filter(p => p.estado === "pagado").reduce((s, p) => s + Number(p.monto), 0);
   const pendiente = pagos.filter(p => p.estado === "pendiente").reduce((s, p) => s + Number(p.monto), 0);
 
+  // Agrupar pagos de una misma cita (abono + saldo) en un solo registro
+  const grupos = {};
+  pagos.forEach(p => {
+    const clave = p.cita_id || `solo-${p.id}`;
+    if (!grupos[clave]) grupos[clave] = { clave, cliente: p.cliente, servicio: p.servicio, metodo: p.metodo, pagados: [], pendientes: [], created_at: p.created_at };
+    if (p.estado === "pagado") grupos[clave].pagados.push(p);
+    else grupos[clave].pendientes.push(p);
+  });
+  const filas = Object.values(grupos).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  async function cobrarSaldo(grupo) {
+    setCobrando(grupo.clave);
+    for (const p of grupo.pendientes) {
+      await supabase.from("pagos").update({ estado: "pagado" }).eq("id", p.id);
+    }
+    await cargar();
+    setCobrando(null);
+  }
+
   return (
     <div className="p-6 space-y-5">
       {modal && <NuevoCobro onClose={() => setModal(false)} onGuardado={cargar} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Cobros</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{pagos.length} transacciones</p>
+          <p className="text-sm text-gray-400 mt-0.5">{filas.length} transacciones</p>
         </div>
         <button onClick={() => setModal(true)} className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
           <Plus size={16} /> Registrar cobro
@@ -112,12 +132,12 @@ export default function Cobros() {
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400">Transacciones</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">{pagos.length}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-1">{filas.length}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        {pagos.length === 0 ? (
+        {filas.length === 0 ? (
           <div className="text-center py-14 text-gray-400">
             <CreditCard size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">Sin cobros registrados</p>
@@ -135,30 +155,45 @@ export default function Cobros() {
               </tr>
             </thead>
             <tbody>
-              {pagos.map(p => {
-                const Icon = METODO_ICON[p.metodo] || CreditCard;
+              {filas.map(g => {
+                const pagado = g.pagados.reduce((s,p) => s + Number(p.monto), 0);
+                const saldo = g.pendientes.reduce((s,p) => s + Number(p.monto), 0);
+                const totalGrupo = pagado + saldo;
+                const Icon = METODO_ICON[g.metodo] || CreditCard;
                 return (
-                  <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                  <tr key={g.clave} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-xs font-semibold text-rose-600">
-                          {p.cliente?.slice(0, 2).toUpperCase()}
+                          {g.cliente?.slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="text-sm text-gray-800">{p.cliente}</span>
+                        <span className="text-sm text-gray-800">{g.cliente}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-gray-500 hidden md:table-cell">{p.servicio}</td>
+                    <td className="px-5 py-3 text-sm text-gray-500 hidden md:table-cell">{g.servicio}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                        <Icon size={14} className="text-gray-400" />{p.metodo}
+                        <Icon size={14} className="text-gray-400" />{g.metodo}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm font-semibold text-gray-900 text-right">${Number(p.monto).toFixed(2)}</td>
                     <td className="px-5 py-3 text-right">
-                      {p.estado === "pagado"
-                        ? <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />pagado</span>
-                        : <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><AlertCircle size={11} />pendiente</span>
-                      }
+                      <p className="text-sm font-semibold text-gray-900">${totalGrupo.toFixed(2)}</p>
+                      {saldo > 0 && pagado > 0 && (
+                        <p className="text-xs text-gray-400">${pagado.toFixed(2)} abono + ${saldo.toFixed(2)} saldo</p>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {saldo === 0 ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />pagado</span>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><AlertCircle size={11} />${saldo.toFixed(2)} pendiente</span>
+                          <button onClick={() => cobrarSaldo(g)} disabled={cobrando === g.clave}
+                            className="text-xs bg-green-500 text-white px-2.5 py-1 rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
+                            {cobrando === g.clave ? "..." : "Cobrar"}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

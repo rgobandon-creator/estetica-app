@@ -88,7 +88,7 @@ export default function ReservasAdmin() {
         const precioServicio = servicios.find(s => s.nombre === reserva.servicio)?.precio;
         const abono = Number(reserva.abono) || 0;
 
-        await supabase.from("citas").insert([{
+        const { data: citaNueva } = await supabase.from("citas").insert([{
           cliente: reserva.nombre,
           servicio: reserva.servicio,
           profesional: "Por asignar",
@@ -97,24 +97,25 @@ export default function ReservasAdmin() {
           duracion: 60,
           precio: precioServicio || abono,
           estado: "confirmada",
-        }]);
+        }]).select().single();
+        const citaId = citaNueva?.id;
 
         if (reserva.comprobante_url) {
           // Hay comprobante subido: registramos el abono como ya cobrado
           await supabase.from("pagos").insert([{
-            cliente: reserva.nombre, servicio: reserva.servicio,
+            cliente: reserva.nombre, servicio: reserva.servicio, cita_id: citaId,
             monto: abono, metodo: "Transferencia", estado: "pagado",
           }]);
           if (precioServicio && precioServicio > abono) {
             await supabase.from("pagos").insert([{
-              cliente: reserva.nombre, servicio: reserva.servicio,
+              cliente: reserva.nombre, servicio: reserva.servicio, cita_id: citaId,
               monto: precioServicio - abono, metodo: "Efectivo", estado: "pendiente",
             }]);
           }
         } else {
           // Sin comprobante: no asumimos que se pagó nada, todo queda pendiente
           await supabase.from("pagos").insert([{
-            cliente: reserva.nombre, servicio: reserva.servicio,
+            cliente: reserva.nombre, servicio: reserva.servicio, cita_id: citaId,
             monto: precioServicio || abono, metodo: "Efectivo", estado: "pendiente",
           }]);
         }
