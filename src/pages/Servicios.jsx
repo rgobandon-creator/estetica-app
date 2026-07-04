@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Scissors, Clock, Tag, Plus, Pencil, Trash2, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-const CATEGORIAS_BASE = ["Cabello", "Uñas", "Depilación", "Spa", "Maquillaje", "Otro"];
+const CATEGORIAS_BASE = ["Uñas", "Pestañas y Cejas", "Cabello", "Depilación", "Spa", "Maquillaje", "Otro"];
 
 function ServicioModal({ servicio, onClose, onGuardado }) {
   const [form, setForm] = useState(servicio || { nombre:"", duracion:30, precio:0, categoria:"Cabello" });
