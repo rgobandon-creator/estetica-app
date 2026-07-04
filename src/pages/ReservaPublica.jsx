@@ -140,7 +140,10 @@ export default function ReservaPublica() {
     supabase.from("configuracion").select("valor").eq("clave","salon_config").single()
       .then(({ data }) => { if (data?.valor) setConfig({ ...CONFIG_DEFAULT, ...data.valor }); });
     supabase.from("servicios").select("*").order("categoria").order("nombre")
-      .then(({ data }) => setServicios(data || []));
+      .then(({ data }) => {
+        setServicios(data || []);
+        if (data && data.length > 0) setCategoriaAbierta(data[0].categoria || "Otro");
+      });
   }, []);
 
   const HORAS = generarHoras(config.horario_inicio||"09:00", config.horario_fin||"19:00");
@@ -258,21 +261,47 @@ export default function ReservaPublica() {
               <div className="text-center py-10 text-gray-400 bg-white rounded-xl border border-gray-100">
                 <p className="text-sm">Cargando servicios...</p>
               </div>
-            ) : servicios.map(s => (
-              <button key={s.id} onClick={()=>{setServicio(s);setPaso(2);}}
-                className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-rose-300 hover:bg-rose-50 transition-all text-left group">
-                <span className="text-2xl flex-shrink-0">{emojiPorNombre(s.nombre, s.categoria)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 group-hover:text-rose-700">{s.nombre}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Clock size={11}/>{s.duracion} min</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-semibold text-rose-500 text-lg">${Number(s.precio).toFixed(2)}</p>
-                  <p className="text-xs text-gray-400">abono ${config.abono_minimo}</p>
-                </div>
-                <ArrowRight size={16} className="text-gray-300 group-hover:text-rose-400 flex-shrink-0"/>
-              </button>
-            ))}
+            ) : Object.entries(
+                servicios.reduce((grupos, s) => {
+                  const cat = s.categoria || "Otro";
+                  (grupos[cat] = grupos[cat] || []).push(s);
+                  return grupos;
+                }, {})
+              ).map(([categoria, items]) => {
+                const abierta = categoriaAbierta === categoria;
+                return (
+                  <div key={categoria} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <button onClick={() => setCategoriaAbierta(categoriaAbierta === categoria ? null : categoria)}
+                      className="w-full flex items-center justify-between p-4 hover:bg-rose-50 transition-colors text-left">
+                      <span className="flex items-center gap-2 font-medium text-gray-800">
+                        <span className="text-xl">{EMOJI_CATEGORIA[categoria] || "✨"}</span>
+                        {categoria}
+                        <span className="text-xs font-normal text-gray-400">({items.length})</span>
+                      </span>
+                      {abierta ? <ChevronLeft size={16} className="text-gray-400 rotate-90"/> : <ChevronRight size={16} className="text-gray-400"/>}
+                    </button>
+                    {abierta && (
+                      <div className="border-t border-gray-100 divide-y divide-gray-50">
+                        {items.map(s => (
+                          <button key={s.id} onClick={()=>{setServicio(s);setPaso(2);}}
+                            className="w-full flex items-center gap-4 p-4 hover:bg-rose-50 transition-all text-left group">
+                            <span className="text-xl flex-shrink-0">{emojiPorNombre(s.nombre, s.categoria)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 group-hover:text-rose-700">{s.nombre}</p>
+                              <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Clock size={11}/>{s.duracion} min</p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-semibold text-rose-500 text-lg">${Number(s.precio).toFixed(2)}</p>
+                              <p className="text-xs text-gray-400">abono ${config.abono_minimo}</p>
+                            </div>
+                            <ArrowRight size={16} className="text-gray-300 group-hover:text-rose-400 flex-shrink-0"/>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
 
