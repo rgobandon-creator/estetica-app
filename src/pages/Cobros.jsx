@@ -74,10 +74,77 @@ function NuevoCobro({ onClose, onGuardado }) {
   );
 }
 
+function ModalCobrarSaldo({ grupo, onClose, onGuardado }) {
+  const saldo = grupo.pendientes.reduce((s, p) => s + Number(p.monto), 0);
+  const [monto, setMonto] = useState(saldo);
+  const [metodo, setMetodo] = useState("Efectivo");
+  const [cargando, setCargando] = useState(false);
+
+  async function cobrar() {
+    setCargando(true);
+    if (grupo.pendientes.length === 1) {
+      await supabase.from("pagos").update({ monto: Number(monto), metodo, estado: "pagado" }).eq("id", grupo.pendientes[0].id);
+    } else {
+      // Varios pagos pendientes en el mismo grupo: se marcan todos como pagados con el método elegido
+      for (const p of grupo.pendientes) {
+        await supabase.from("pagos").update({ metodo, estado: "pagado" }).eq("id", p.id);
+      }
+    }
+    setCargando(false);
+    onGuardado();
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">Cobrar saldo pendiente</h2>
+          <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
+        </div>
+        <div className="p-3 bg-rose-50 rounded-lg mb-4">
+          <p className="text-sm font-medium text-gray-900">{grupo.cliente}</p>
+          <p className="text-xs text-gray-500">{grupo.servicio}</p>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Monto a cobrar ($)</label>
+            <input type="number" value={monto} onChange={e => setMonto(e.target.value)}
+              disabled={grupo.pendientes.length > 1}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 disabled:bg-gray-50"/>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-2">Método de pago</label>
+            <div className="grid grid-cols-3 gap-2">
+              {["Efectivo", "Transferencia", "Tarjeta"].map(m => {
+                const Icon = METODO_ICON[m];
+                return (
+                  <button key={m} onClick={() => setMetodo(m)}
+                    className={`flex flex-col items-center gap-1 p-3 border rounded-lg transition-colors text-xs ${metodo === m ? "border-rose-400 bg-rose-50 text-rose-600" : "border-gray-200 hover:border-rose-300 text-gray-600"}`}>
+                    <Icon size={18} className={metodo === m ? "text-rose-500" : "text-gray-400"}/>
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button onClick={cobrar} disabled={cargando}
+            className="flex-1 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 disabled:opacity-50">
+            {cargando ? "Cobrando..." : "Cobrar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Cobros() {
   const [pagos, setPagos] = useState([]);
   const [modal, setModal] = useState(false);
-  const [cobrando, setCobrando] = useState(null);
+  const [cobrandoGrupo, setCobrandoGrupo] = useState(null);
 
   async function cargar() {
     const { data } = await supabase.from("pagos").select("*").order("created_at", { ascending: false });
@@ -99,18 +166,10 @@ export default function Cobros() {
   });
   const filas = Object.values(grupos).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
-  async function cobrarSaldo(grupo) {
-    setCobrando(grupo.clave);
-    for (const p of grupo.pendientes) {
-      await supabase.from("pagos").update({ estado: "pagado" }).eq("id", p.id);
-    }
-    await cargar();
-    setCobrando(null);
-  }
-
   return (
     <div className="p-6 space-y-5">
       {modal && <NuevoCobro onClose={() => setModal(false)} onGuardado={cargar} />}
+      {cobrandoGrupo && <ModalCobrarSaldo grupo={cobrandoGrupo} onClose={() => setCobrandoGrupo(null)} onGuardado={cargar} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Cobros</h1>
@@ -188,9 +247,9 @@ export default function Cobros() {
                       ) : (
                         <div className="flex items-center justify-end gap-2">
                           <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><AlertCircle size={11} />${saldo.toFixed(2)} pendiente</span>
-                          <button onClick={() => cobrarSaldo(g)} disabled={cobrando === g.clave}
-                            className="text-xs bg-green-500 text-white px-2.5 py-1 rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
-                            {cobrando === g.clave ? "..." : "Cobrar"}
+                          <button onClick={() => setCobrandoGrupo(g)}
+                            className="text-xs bg-green-500 text-white px-2.5 py-1 rounded-lg hover:bg-green-600 transition-colors">
+                            Cobrar
                           </button>
                         </div>
                       )}
