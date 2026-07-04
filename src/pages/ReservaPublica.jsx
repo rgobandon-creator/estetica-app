@@ -135,8 +135,8 @@ export default function ReservaPublica() {
   useEffect(() => {
     if (!fecha) return;
     Promise.all([
-      supabase.from("citas").select("hora,duracion").eq("fecha",fecha).neq("estado","cancelada"),
-      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",fecha).eq("estado","confirmada"),
+      supabase.from("horarios_citas").select("hora,duracion").eq("fecha",fecha).neq("estado","cancelada"),
+      supabase.from("horarios_reservas").select("hora,servicio").eq("fecha",fecha).eq("estado","confirmada"),
     ]).then(([{data:c},{data:r}]) => {
       const duracionServicio = {};
       servicios.forEach(s => { duracionServicio[s.nombre] = s.duracion; });
