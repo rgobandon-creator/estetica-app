@@ -99,15 +99,23 @@ export default function ReservasAdmin() {
           estado: "confirmada",
         }]);
 
-        await supabase.from("pagos").insert([{
-          cliente: reserva.nombre, servicio: reserva.servicio,
-          monto: abono, metodo: "Transferencia", estado: "pagado",
-        }]);
-
-        if (precioServicio && precioServicio > abono) {
+        if (reserva.comprobante_url) {
+          // Hay comprobante subido: registramos el abono como ya cobrado
           await supabase.from("pagos").insert([{
             cliente: reserva.nombre, servicio: reserva.servicio,
-            monto: precioServicio - abono, metodo: "Efectivo", estado: "pendiente",
+            monto: abono, metodo: "Transferencia", estado: "pagado",
+          }]);
+          if (precioServicio && precioServicio > abono) {
+            await supabase.from("pagos").insert([{
+              cliente: reserva.nombre, servicio: reserva.servicio,
+              monto: precioServicio - abono, metodo: "Efectivo", estado: "pendiente",
+            }]);
+          }
+        } else {
+          // Sin comprobante: no asumimos que se pagó nada, todo queda pendiente
+          await supabase.from("pagos").insert([{
+            cliente: reserva.nombre, servicio: reserva.servicio,
+            monto: precioServicio || abono, metodo: "Efectivo", estado: "pendiente",
           }]);
         }
       }

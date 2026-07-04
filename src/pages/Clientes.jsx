@@ -2,6 +2,22 @@ import { useState, useEffect } from "react";
 import { Search, Plus, Phone, Mail, AlertCircle, FileText, X, Users, Pencil } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+function nivelFidelidad(visitas) {
+  if (visitas >= 10) return { label: "VIP", color: "bg-purple-100 text-purple-700", icon: "👑" };
+  if (visitas >= 5) return { label: "Fiel", color: "bg-rose-100 text-rose-700", icon: "💖" };
+  if (visitas >= 2) return { label: "Recurrente", color: "bg-blue-100 text-blue-700", icon: "🔁" };
+  return { label: "Nuevo", color: "bg-gray-100 text-gray-500", icon: "🌱" };
+}
+
+function BadgeFidelidad({ visitas }) {
+  const n = nivelFidelidad(visitas);
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${n.color}`}>
+      {n.icon} {n.label}
+    </span>
+  );
+}
+
 function ClienteModal({ cliente, onClose, onGuardado }) {
   const [form, setForm] = useState(cliente || { nombre:"", telefono:"", email:"", alergias:"Ninguna", notas:"" });
   const [cargando, setCargando] = useState(false);
@@ -88,6 +104,7 @@ function FichaCliente({ cliente, onClose, onEditar }) {
   }, [cliente]);
 
   const totalGastado = historial.filter(c => c.estado === "cobrada").reduce((s,c) => s + Number(c.precio), 0);
+  const visitasCobradas = historial.filter(c => c.estado === "cobrada").length;
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -98,7 +115,10 @@ function FichaCliente({ cliente, onClose, onEditar }) {
               {cliente.nombre?.slice(0,2).toUpperCase()}
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">{cliente.nombre}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900">{cliente.nombre}</h2>
+                <BadgeFidelidad visitas={visitasCobradas}/>
+              </div>
               <p className="text-sm text-gray-400">{historial.length} visitas · ${totalGastado.toFixed(2)} total</p>
             </div>
           </div>
@@ -168,10 +188,18 @@ export default function Clientes() {
   const [modalNuevo, setModalNuevo] = useState(false);
   const [cargando, setCargando] = useState(true);
 
+  const [visitas, setVisitas] = useState({});
+
   async function cargar() {
     setCargando(true);
     const { data } = await supabase.from("clientes").select("*").order("nombre");
     setClientes(data || []);
+
+    const { data: citas } = await supabase.from("citas").select("cliente").eq("estado", "cobrada");
+    const conteo = {};
+    (citas || []).forEach(c => { conteo[c.cliente] = (conteo[c.cliente] || 0) + 1; });
+    setVisitas(conteo);
+
     setCargando(false);
   }
 
@@ -233,6 +261,7 @@ export default function Clientes() {
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cliente</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Teléfono</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden md:table-cell">Email</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Fidelidad</th>
                 <th className="px-5 py-3 text-xs font-medium text-gray-400"></th>
               </tr>
             </thead>
@@ -254,6 +283,9 @@ export default function Clientes() {
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-500 cursor-pointer" onClick={() => setSeleccionado(c)}>{c.telefono||"—"}</td>
                   <td className="px-5 py-3 text-sm text-gray-500 hidden md:table-cell cursor-pointer" onClick={() => setSeleccionado(c)}>{c.email||"—"}</td>
+                  <td className="px-5 py-3 cursor-pointer" onClick={() => setSeleccionado(c)}>
+                    <BadgeFidelidad visitas={visitas[c.nombre] || 0}/>
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <button onClick={() => setEditando(c)}
                       className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors group">
