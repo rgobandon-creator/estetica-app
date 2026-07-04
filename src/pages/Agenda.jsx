@@ -89,6 +89,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   const [esNuevo, setEsNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ telefono:"", email:"", alergias:"Ninguna" });
   const [form, setForm] = useState({ cliente:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
+  const [montoRecibido, setMontoRecibido] = useState(0);
   const [cargando, setCargando] = useState(false);
 
   const HORAS = [];
@@ -136,7 +137,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
 
   function seleccionarServicio(val){
     const s=servicios.find(sv=>sv.nombre===val);
-    if(s)setForm(f=>({...f,servicio:s.nombre,duracion:s.duracion,precio:s.precio}));
+    if(s){setForm(f=>({...f,servicio:s.nombre,duracion:s.duracion,precio:s.precio}));setMontoRecibido(s.precio);}
     else setForm(f=>({...f,servicio:val}));
   }
 
@@ -146,7 +147,26 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
     if(esNuevo&&!clientes.find(c=>c.nombre===form.cliente)){
       await supabase.from("clientes").insert([{nombre:form.cliente,...nuevoCliente}]);
     }
-    const {error}=await supabase.from("citas").insert([form]);
+    const {data:citaNueva,error}=await supabase.from("citas").insert([form]).select().single();
+
+    if(!error && citaNueva){
+      const precio = Number(form.precio)||0;
+      const recibido = Math.min(Number(montoRecibido)||0, precio);
+
+      if(recibido > 0){
+        await supabase.from("pagos").insert([{
+          cliente: form.cliente, servicio: form.servicio, cita_id: citaNueva.id,
+          monto: recibido, metodo: "Efectivo", estado: "pagado",
+        }]);
+      }
+      if(precio - recibido > 0){
+        await supabase.from("pagos").insert([{
+          cliente: form.cliente, servicio: form.servicio, cita_id: citaNueva.id,
+          monto: precio - recibido, metodo: "Efectivo", estado: "pendiente",
+        }]);
+      }
+    }
+
     setCargando(false);
     if(!error){onGuardada();onClose();}
     else alert("Error: "+error.message);
@@ -228,7 +248,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Precio ($)</label>
-              <input type="number" value={form.precio} onChange={e=>setForm({...form,precio:Number(e.target.value)})}
+              <input type="number" value={form.precio} onChange={e=>{const p=Number(e.target.value);setForm({...form,precio:p});setMontoRecibido(p);}}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
             </div>
             <div>
@@ -239,6 +259,18 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
                 <option value="pendiente">Pendiente</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Monto recibido ahora ($)</label>
+            <input type="number" value={montoRecibido} onChange={e=>setMontoRecibido(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+            <p className="text-xs text-gray-400 mt-1">
+              {Number(montoRecibido) >= Number(form.precio) && Number(form.precio) > 0
+                ? "Se registrará como pago completo"
+                : Number(montoRecibido) > 0
+                  ? `Se registrará $${Number(montoRecibido).toFixed(2)} pagado y $${(Number(form.precio)-Number(montoRecibido)).toFixed(2)} pendiente`
+                  : "Se registrará todo el servicio como pendiente de cobro"}
+            </p>
           </div>
         </div>
         <div className="flex gap-3 p-6 border-t border-gray-100">
