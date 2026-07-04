@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, Users, CreditCard,
-  Scissors, Settings, Sparkles, LogOut, CalendarCheck
+  Scissors, Settings, Sparkles, LogOut, CalendarCheck, UserCog
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -48,6 +48,7 @@ export default function Sidebar({ user, onLogout }) {
     { to: "/clientes", icon: Users, label: "Clientes" },
     { to: "/cobros", icon: CreditCard, label: "Cobros" },
     { to: "/servicios", icon: Scissors, label: "Servicios" },
+    { to: "/profesionales", icon: UserCog, label: "Profesionales" },
   ];
 
   return (

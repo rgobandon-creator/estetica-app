@@ -11,6 +11,7 @@ import { Servicios } from './pages/Servicios'
 import ReservaPublica from './pages/ReservaPublica'
 import ReservasAdmin from './pages/ReservasAdmin'
 import Configuracion from './pages/Configuracion'
+import Profesionales from './pages/Profesionales'
 
 function Layout({ user, onLogout }) {
   return (
@@ -25,6 +26,7 @@ function Layout({ user, onLogout }) {
           <Route path="/servicios" element={<Servicios />} />
           <Route path="/reservas-admin" element={<ReservasAdmin />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/profesionales" element={<Profesionales />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
