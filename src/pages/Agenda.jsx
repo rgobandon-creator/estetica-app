@@ -83,6 +83,7 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
 
 function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   const [servicios, setServicios] = useState([]);
+  const [profesionales, setProfesionales] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [bloqueos, setBloqueos] = useState([]);
   const [clienteInfo, setClienteInfo] = useState(null);
@@ -97,6 +98,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
 
   useEffect(() => {
     supabase.from("servicios").select("*").order("nombre").then(({data})=>setServicios(data||[]));
+    supabase.from("profesionales").select("*").eq("activo",true).order("nombre").then(({data})=>setProfesionales(data||[]));
     Promise.all([
       supabase.from("clientes").select("nombre,telefono,email,alergias,notas").order("nombre"),
       supabase.from("reservas_publicas").select("nombre,telefono,email").neq("estado","cancelada")
@@ -111,21 +113,25 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   useEffect(()=>{
     if(!form.fecha)return;
     Promise.all([
-      supabase.from("citas").select("hora,duracion").eq("fecha",form.fecha).neq("estado","cancelada"),
-      supabase.from("reservas_publicas").select("hora,servicio").eq("fecha",form.fecha).eq("estado","confirmada")
+      supabase.from("citas").select("hora,duracion,profesional").eq("fecha",form.fecha).neq("estado","cancelada"),
+      supabase.from("reservas_publicas").select("hora,servicio,profesional").eq("fecha",form.fecha).eq("estado","confirmada")
     ]).then(([{data:c},{data:r}])=>{
       const duracionServicio={};
       servicios.forEach(s=>{duracionServicio[s.nombre]=s.duracion;});
       const items=[
-        ...(c||[]).map(x=>({hora:x.hora,duracion:x.duracion||60})),
-        ...(r||[]).map(x=>({hora:x.hora,duracion:duracionServicio[x.servicio]||60})),
-      ];
+        ...(c||[]).map(x=>({hora:x.hora,duracion:x.duracion||60,profesional:x.profesional})),
+        ...(r||[]).map(x=>({hora:x.hora,duracion:duracionServicio[x.servicio]||60,profesional:x.profesional})),
+      ].filter(x =>
+        // Sin profesional seleccionado en el formulario: se considera todo (bloqueo global, comportamiento anterior)
+        // Con profesional seleccionado: solo bloquea lo de ESE profesional, o lo que no tiene profesional asignado aún
+        !form.profesional || !x.profesional || x.profesional === form.profesional
+      );
       setBloqueos(items.map(x=>{
         const inicio=minutosDesde(x.hora);
         return {inicio,fin:inicio+x.duracion};
       }));
     });
-  },[form.fecha, servicios]);
+  },[form.fecha, servicios, form.profesional]);
 
   function seleccionarCliente(nombre){
     setForm(f=>({...f,cliente:nombre}));
@@ -217,7 +223,20 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Profesional</label>
-            <input placeholder="Nombre del profesional" value={form.profesional}
+            <select value={form.profesional} onChange={e=>setForm({...form,profesional:e.target.value})}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300">
+              <option value="">Por asignar</option>
+              {profesionales
+                .filter(p => !form.servicio || (p.servicios||[]).includes(form.servicio))
+                .map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+            </select>
+            {form.servicio && profesionales.filter(p => (p.servicios||[]).includes(form.servicio)).length === 0 && (
+              <p className="text-xs text-amber-500 mt-1">Nadie tiene asignado este servicio todavía (revisa Profesionales)</p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Otro profesional (si no aparece en la lista)</label>
+            <input placeholder="Escribe un nombre" value={profesionales.some(p=>p.nombre===form.profesional) || !form.profesional ? "" : form.profesional}
               onChange={e=>setForm({...form,profesional:e.target.value})}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
           </div>
