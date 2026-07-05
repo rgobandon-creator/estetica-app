@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Scissors, Clock, Tag, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Scissors, Clock, Tag, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 const CATEGORIAS_BASE = ["Cabello", "Uñas", "Depilación", "Spa", "Maquillaje", "Otro"];
@@ -95,20 +95,40 @@ function ServicioModal({ servicio, onClose, onGuardado }) {
 
 export function Servicios() {
   const [servicios, setServicios] = useState([]);
+  const [ordenCategorias, setOrdenCategorias] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
 
   async function cargar() {
     setCargando(true);
-    const { data } = await supabase.from("servicios").select("*").order("orden").order("nombre");
-    setServicios(data || []);
+    const [{ data: s }, { data: cfg }] = await Promise.all([
+      supabase.from("servicios").select("*").order("orden").order("nombre"),
+      supabase.from("configuracion").select("valor").eq("clave","categorias_orden").maybeSingle(),
+    ]);
+    setServicios(s || []);
+    setOrdenCategorias(cfg?.valor || []);
     setCargando(false);
   }
 
   useEffect(() => { cargar(); }, []);
 
-  const categorias = [...new Set(servicios.map(s => s.categoria))];
+  const categoriasDetectadas = [...new Set(servicios.map(s => s.categoria))];
+  // Combina el orden guardado con categorías nuevas que no estén todavía en esa lista
+  const categorias = [
+    ...ordenCategorias.filter(c => categoriasDetectadas.includes(c)),
+    ...categoriasDetectadas.filter(c => !ordenCategorias.includes(c)),
+  ];
+
+  async function moverCategoria(cat, direccion) {
+    const actual = [...categorias];
+    const i = actual.indexOf(cat);
+    const j = i + direccion;
+    if (j < 0 || j >= actual.length) return;
+    [actual[i], actual[j]] = [actual[j], actual[i]];
+    setOrdenCategorias(actual);
+    await supabase.from("configuracion").upsert({ clave: "categorias_orden", valor: actual }, { onConflict: "clave" });
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -128,11 +148,25 @@ export function Servicios() {
 
       {cargando ? (
         <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"/></div>
-      ) : categorias.map(cat => (
+      ) : categorias.map((cat, i) => (
         <div key={cat} className="bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <Tag size={14} className="text-rose-400"/>{cat}
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Tag size={14} className="text-rose-400"/>{cat}
+            </h2>
+            <div className="flex items-center gap-1">
+              <button onClick={() => moverCategoria(cat, -1)} disabled={i===0}
+                title="Mover categoría hacia arriba"
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:hover:bg-transparent">
+                <ChevronUp size={16} className="text-gray-400"/>
+              </button>
+              <button onClick={() => moverCategoria(cat, 1)} disabled={i===categorias.length-1}
+                title="Mover categoría hacia abajo"
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:hover:bg-transparent">
+                <ChevronDown size={16} className="text-gray-400"/>
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {servicios.filter(s => s.categoria === cat).map(s => (
               <div key={s.id} onClick={() => setEditando(s)}

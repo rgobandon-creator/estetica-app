@@ -141,6 +141,7 @@ export default function ReservaPublica() {
   const [reservaUUID, setReservaUUID] = useState(null);
   const [paginaDia, setPaginaDia] = useState(0);
   const [categoriaAbierta, setCategoriaAbierta] = useState(null);
+  const [ordenCategorias, setOrdenCategorias] = useState([]);
   const [profesionales, setProfesionales] = useState([]);
   const [profesionalElegido, setProfesionalElegido] = useState(null); // null | 'cualquiera' | objeto profesional
   const [itemsDia, setItemsDia] = useState([]);
@@ -160,6 +161,8 @@ export default function ReservaPublica() {
       });
     supabase.from("profesionales").select("*").eq("activo", true).order("nombre")
       .then(({ data }) => setProfesionales(data || []));
+    supabase.from("configuracion").select("valor").eq("clave","categorias_orden").maybeSingle()
+      .then(({ data }) => setOrdenCategorias(data?.valor || []));
   }, []);
 
   const calificados = servicio ? profesionales.filter(p => (p.servicios||[]).includes(servicio.nombre)) : [];
@@ -327,7 +330,14 @@ export default function ReservaPublica() {
                   (grupos[cat] = grupos[cat] || []).push(s);
                   return grupos;
                 }, {})
-              ).map(([categoria, items]) => {
+              ).sort(([a], [b]) => {
+                const ia = ordenCategorias.indexOf(a);
+                const ib = ordenCategorias.indexOf(b);
+                if (ia === -1 && ib === -1) return 0;
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+              }).map(([categoria, items]) => {
                 const abierta = categoriaAbierta === categoria;
                 return (
                   <div key={categoria} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
