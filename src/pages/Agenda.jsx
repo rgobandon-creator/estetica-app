@@ -40,8 +40,8 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Registrar cobro</h2>
           <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
@@ -81,7 +81,7 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
   );
 }
 
-function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
+function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   const [servicios, setServicios] = useState([]);
   const [profesionales, setProfesionales] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -89,9 +89,10 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   const [clienteInfo, setClienteInfo] = useState(null);
   const [esNuevo, setEsNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ telefono:"", email:"", alergias:"Ninguna" });
-  const [form, setForm] = useState({ cliente:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
+  const [form, setForm] = useState(citaEditar || { cliente:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
   const [montoRecibido, setMontoRecibido] = useState(0);
   const [cargando, setCargando] = useState(false);
+  const esEdicion = !!citaEditar?.id;
 
   const HORAS = [];
   for (let h=8;h<19;h++){HORAS.push(`${String(h).padStart(2,"0")}:00`);HORAS.push(`${String(h).padStart(2,"0")}:30`);}
@@ -150,6 +151,18 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   async function guardar(){
     if(!form.cliente||!form.servicio||!form.hora){alert("Cliente, servicio y hora son obligatorios");return;}
     setCargando(true);
+
+    if(esEdicion){
+      const {error}=await supabase.from("citas").update({
+        cliente:form.cliente, servicio:form.servicio, profesional:form.profesional,
+        fecha:form.fecha, hora:form.hora, duracion:form.duracion, precio:form.precio, estado:form.estado,
+      }).eq("id", citaEditar.id);
+      setCargando(false);
+      if(!error){onGuardada();onClose();}
+      else alert("Error: "+error.message);
+      return;
+    }
+
     if(esNuevo&&!clientes.find(c=>c.nombre===form.cliente)){
       await supabase.from("clientes").insert([{nombre:form.cliente,...nuevoCliente}]);
     }
@@ -179,10 +192,10 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Nueva cita</h2>
+          <h2 className="font-semibold text-gray-900">{esEdicion ? "Editar cita" : "Nueva cita"}</h2>
           <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
         </div>
         <div className="p-6 space-y-4">
@@ -296,7 +309,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
           <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600">Cancelar</button>
           <button onClick={guardar} disabled={cargando}
             className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 disabled:opacity-50">
-            {cargando?"Guardando...":"Guardar cita"}
+            {cargando?"Guardando...":esEdicion?"Guardar cambios":"Crear cita"}
           </button>
         </div>
       </div>
@@ -306,6 +319,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial }) {
 
 export default function Agenda() {
   const [modal, setModal] = useState(false);
+  const [citaEditando, setCitaEditando] = useState(null);
   const [citaCobro, setCitaCobro] = useState(null);
   const [citas, setCitas] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -343,7 +357,14 @@ export default function Agenda() {
 
   return (
     <div className="p-6 space-y-5">
-      {modal && <NuevaCitaModal onClose={()=>setModal(false)} onGuardada={cargarCitas} fechaInicial={diaSeleccionado}/>}
+      {(modal || citaEditando) && (
+        <NuevaCitaModal
+          onClose={()=>{setModal(false);setCitaEditando(null);}}
+          onGuardada={cargarCitas}
+          fechaInicial={diaSeleccionado}
+          citaEditar={citaEditando}
+        />
+      )}
       {citaCobro && <RegistrarCobroModal cita={citaCobro} onClose={()=>setCitaCobro(null)} onGuardado={cargarCitas}/>}
 
       <div className="flex items-center justify-between">
@@ -387,7 +408,8 @@ export default function Agenda() {
         ):(
           <div className="space-y-3">
             {citasActivas.map(c=>(
-              <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors">
+              <div key={c.id} onClick={()=>setCitaEditando(c)}
+                className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors cursor-pointer">
                 <div className="flex-shrink-0 text-center w-14">
                   <p className="text-sm font-semibold text-rose-500">{c.hora}</p>
                   <p className="text-xs text-gray-400">{c.duracion}min</p>
@@ -403,7 +425,7 @@ export default function Agenda() {
                 <EstadoBadge estado={c.estado}/>
                 <p className="text-sm font-semibold text-gray-800 flex-shrink-0">${c.precio}</p>
                 {c.estado!=="cobrada"&&c.estado!=="cancelada"&&(
-                  <button onClick={()=>setCitaCobro(c)}
+                  <button onClick={(e)=>{e.stopPropagation();setCitaCobro(c);}}
                     className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors flex-shrink-0">
                     <CheckCircle size={13}/> Cobrar
                   </button>
