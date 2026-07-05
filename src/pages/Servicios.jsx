@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Scissors, Clock, Tag, Plus, Pencil, Trash2, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-const CATEGORIAS_BASE = ["Uñas", "Pestañas y Cejas", "Cabello", "Depilación", "Spa", "Maquillaje", "Otro"];
+const CATEGORIAS_BASE = ["Cabello", "Uñas", "Depilación", "Spa", "Maquillaje", "Otro"];
 
 function ServicioModal({ servicio, onClose, onGuardado }) {
-  const [form, setForm] = useState(servicio || { nombre:"", duracion:30, precio:0, categoria:"Cabello" });
+  const [form, setForm] = useState(servicio || { nombre:"", duracion:30, precio:0, categoria:"Cabello", orden:0 });
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!servicio?.id;
 
@@ -14,9 +14,9 @@ function ServicioModal({ servicio, onClose, onGuardado }) {
     setCargando(true);
     let error;
     if (esEdicion) {
-      ({ error } = await supabase.from("servicios").update({ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria }).eq("id", servicio.id));
+      ({ error } = await supabase.from("servicios").update({ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria, orden:form.orden||0 }).eq("id", servicio.id));
     } else {
-      ({ error } = await supabase.from("servicios").insert([{ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria }]));
+      ({ error } = await supabase.from("servicios").insert([{ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria, orden:form.orden||0 }]));
     }
     setCargando(false);
     if (!error) { onGuardado(); onClose(); }
@@ -67,6 +67,13 @@ function ServicioModal({ servicio, onClose, onGuardado }) {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
             </div>
           </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Orden de aparición</label>
+            <input type="number" value={form.orden||0}
+              onChange={e => setForm({...form, orden:Number(e.target.value)})}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+            <p className="text-xs text-gray-400 mt-1">Entre más bajo el número, aparece primero (0 = primero de todos)</p>
+          </div>
         </div>
         <div className="flex gap-3 p-6 border-t border-gray-100">
           {esEdicion && (
@@ -94,7 +101,7 @@ export function Servicios() {
 
   async function cargar() {
     setCargando(true);
-    const { data } = await supabase.from("servicios").select("*").order("categoria").order("nombre");
+    const { data } = await supabase.from("servicios").select("*").order("orden").order("nombre");
     setServicios(data || []);
     setCargando(false);
   }

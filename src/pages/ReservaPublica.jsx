@@ -60,6 +60,18 @@ function emojiPorNombre(nombre, categoria) {
 
 const DIAS_MAP = { domingo:0, lunes:1, martes:2, "miércoles":3, jueves:4, viernes:5, sábado:6 };
 
+function quitarAcentos(s) {
+  return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+const ACENTO_DIA = { miercoles: "miércoles", sabado: "sábado" };
+function normalizarDiasHabiles(arr) {
+  return (arr || []).map(d => {
+    const limpio = quitarAcentos(d.toLowerCase());
+    return ACENTO_DIA[limpio] || limpio;
+  });
+}
+
 function minutosDesde(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
@@ -129,6 +141,9 @@ export default function ReservaPublica() {
   const [reservaUUID, setReservaUUID] = useState(null);
   const [paginaDia, setPaginaDia] = useState(0);
   const [categoriaAbierta, setCategoriaAbierta] = useState(null);
+  const [profesionales, setProfesionales] = useState([]);
+  const [profesionalElegido, setProfesionalElegido] = useState(null); // null | 'cualquiera' | objeto profesional
+  const [itemsDia, setItemsDia] = useState([]);
   const [archivo, setArchivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
@@ -139,36 +154,65 @@ export default function ReservaPublica() {
   useEffect(() => {
     supabase.from("configuracion").select("valor").eq("clave","salon_config").single()
       .then(({ data }) => { if (data?.valor) setConfig({ ...CONFIG_DEFAULT, ...data.valor }); });
-    supabase.from("servicios").select("*").order("categoria").order("nombre")
+    supabase.from("servicios").select("*").order("orden").order("nombre")
       .then(({ data }) => {
         setServicios(data || []);
-        if (data && data.length > 0) setCategoriaAbierta(data[0].categoria || "Otro");
       });
+    supabase.from("profesionales").select("*").eq("activo", true).order("nombre")
+      .then(({ data }) => setProfesionales(data || []));
   }, []);
 
-  const HORAS = generarHoras(config.horario_inicio||"09:00", config.horario_fin||"19:00");
-  const dias = generarDias(config.dias||CONFIG_DEFAULT.dias);
+  const calificados = servicio ? profesionales.filter(p => (p.servicios||[]).includes(servicio.nombre)) : [];
+
+  let diasHabiles;
+  let horarioIni = config.horario_inicio || "09:00";
+  let horarioFinDia = config.horario_fin || "19:00";
+  if (calificados.length === 0) {
+    diasHabiles = config.dias || CONFIG_DEFAULT.dias;
+  } else if (profesionalElegido === "cualquiera") {
+    diasHabiles = [...new Set(calificados.flatMap(p => normalizarDiasHabiles(p.dias)))];
+    horarioIni = calificados.reduce((min,p)=> p.horario_inicio<min?p.horario_inicio:min, calificados[0].horario_inicio);
+    horarioFinDia = calificados.reduce((max,p)=> p.horario_fin>max?p.horario_fin:max, calificados[0].horario_fin);
+  } else if (profesionalElegido) {
+    diasHabiles = normalizarDiasHabiles(profesionalElegido.dias);
+    horarioIni = profesionalElegido.horario_inicio;
+    horarioFinDia = profesionalElegido.horario_fin;
+  } else {
+    diasHabiles = [];
+  }
+
+  const HORAS = generarHoras(horarioIni||"09:00", horarioFinDia||"19:00");
+  const dias = generarDias(diasHabiles);
   const DIAS_POR_PAGINA = 5;
   const diasVisibles = dias.slice(paginaDia*DIAS_POR_PAGINA, (paginaDia+1)*DIAS_POR_PAGINA);
 
   useEffect(() => {
     if (!fecha) return;
     Promise.all([
-      supabase.from("horarios_citas").select("hora,duracion").eq("fecha",fecha).neq("estado","cancelada"),
-      supabase.from("horarios_reservas").select("hora,servicio").eq("fecha",fecha).eq("estado","confirmada"),
+      supabase.from("horarios_citas").select("hora,duracion,profesional").eq("fecha",fecha).neq("estado","cancelada"),
+      supabase.from("horarios_reservas").select("hora,servicio,profesional").eq("fecha",fecha).eq("estado","confirmada"),
     ]).then(([{data:c},{data:r}]) => {
       const duracionServicio = {};
       servicios.forEach(s => { duracionServicio[s.nombre] = s.duracion; });
       const items = [
-        ...(c||[]).map(x => ({ hora:x.hora, duracion: x.duracion || 60 })),
-        ...(r||[]).map(x => ({ hora:x.hora, duracion: duracionServicio[x.servicio] || 60 })),
+        ...(c||[]).map(x => ({ hora:x.hora, duracion: x.duracion || 60, profesional: x.profesional })),
+        ...(r||[]).map(x => ({ hora:x.hora, duracion: duracionServicio[x.servicio] || 60, profesional: x.profesional })),
       ];
-      setBloqueos(items.map(x => {
-        const inicio = minutosDesde(x.hora);
-        return { inicio, fin: inicio + x.duracion };
-      }));
+      setItemsDia(items);
     });
   }, [fecha, servicios]);
+
+  function profesionalLibre(prof, inicio, fin) {
+    const horaIni = minutosDesde(prof.horario_inicio||"09:00");
+    const horaFin = minutosDesde(prof.horario_fin||"19:00");
+    if (inicio < horaIni || fin > horaFin) return false;
+    const ocupado = itemsDia.some(it => {
+      if (it.profesional && it.profesional !== prof.nombre) return false;
+      const itIni = minutosDesde(it.hora);
+      return inicio < (itIni + it.duracion) && fin > itIni;
+    });
+    return !ocupado;
+  }
 
   function seleccionarArchivo(e) {
     const file = e.target.files[0];
@@ -194,9 +238,25 @@ export default function ReservaPublica() {
   async function enviarReserva() {
     if (!form.nombre||!form.telefono) { setError("Nombre y teléfono son obligatorios"); return; }
     setCargando(true); setError("");
+
+    let profesionalFinal = null;
+    if (profesionalElegido && profesionalElegido !== "cualquiera") {
+      profesionalFinal = profesionalElegido.nombre;
+    } else if (profesionalElegido === "cualquiera") {
+      const inicio = minutosDesde(hora);
+      const fin = inicio + (servicio?.duracion || 30);
+      const libres = calificados.filter(p => profesionalLibre(p, inicio, fin));
+      if (libres.length === 0) {
+        setCargando(false);
+        setError("Ese horario ya no está disponible, elige otro.");
+        return;
+      }
+      profesionalFinal = libres[Math.floor(Math.random()*libres.length)].nombre;
+    }
+
     const { data, error: err } = await supabase.from("reservas_publicas").insert([{
       nombre:form.nombre, telefono:form.telefono, email:form.email,
-      servicio:servicio.nombre, fecha, hora,
+      servicio:servicio.nombre, fecha, hora, profesional: profesionalFinal,
       abono: config.abono_minimo||5,
       notas:form.notas, estado:"pendiente",
     }]).select().single();
@@ -208,7 +268,7 @@ export default function ReservaPublica() {
   }
 
   function resetear() {
-    setPaso(1); setServicio(null); setFecha(null); setHora(null);
+    setPaso(1); setServicio(null); setFecha(null); setHora(null); setProfesionalElegido(null);
     setForm({ nombre:"", telefono:"", email:"", notas:"" });
     setArchivo(null); setPreview(null); setComprobanteSubido(false);
   }
@@ -283,7 +343,7 @@ export default function ReservaPublica() {
                     {abierta && (
                       <div className="border-t border-gray-100 divide-y divide-gray-50">
                         {items.map(s => (
-                          <button key={s.id} onClick={()=>{setServicio(s);setPaso(2);}}
+                          <button key={s.id} onClick={()=>{setServicio(s);setProfesionalElegido(null);setFecha(null);setHora(null);setPaso(2);}}
                             className="w-full flex items-center gap-4 p-4 hover:bg-rose-50 transition-all text-left group">
                             <span className="text-xl flex-shrink-0">{emojiPorNombre(s.nombre, s.categoria)}</span>
                             <div className="flex-1 min-w-0">
@@ -315,6 +375,29 @@ export default function ReservaPublica() {
                 <p className="text-sm text-gray-400">{servicio?.nombre} · {servicio?.duracion} min</p>
               </div>
             </div>
+            {calificados.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <p className="text-xs font-medium text-gray-500 mb-3">¿Quién te atiende?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {calificados.map(p => (
+                    <button key={p.id} onClick={()=>{setProfesionalElegido(p);setFecha(null);setHora(null);}}
+                      className={`flex items-center gap-2 p-3 rounded-xl text-sm font-medium border transition-all ${profesionalElegido?.id===p.id?"bg-rose-500 text-white border-rose-500":"bg-gray-50 text-gray-700 border-gray-100 hover:border-rose-300"}`}>
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${profesionalElegido?.id===p.id?"bg-white/20":"bg-rose-100 text-rose-600"}`}>
+                        {p.nombre.slice(0,2).toUpperCase()}
+                      </span>
+                      {p.nombre}
+                    </button>
+                  ))}
+                  <button onClick={()=>{setProfesionalElegido("cualquiera");setFecha(null);setHora(null);}}
+                    className={`flex items-center gap-2 p-3 rounded-xl text-sm font-medium border transition-all ${profesionalElegido==="cualquiera"?"bg-rose-500 text-white border-rose-500":"bg-gray-50 text-gray-700 border-gray-100 hover:border-rose-300"}`}>
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${profesionalElegido==="cualquiera"?"bg-white/20":"bg-blue-100"}`}>🎲</span>
+                    Cualquiera disponible
+                  </button>
+                </div>
+              </div>
+            )}
+            {(calificados.length === 0 || profesionalElegido) && (
+            <>
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <div className="flex items-center justify-between mb-3">
                 <button onClick={()=>setPaginaDia(p=>Math.max(0,p-1))} disabled={paginaDia===0}
@@ -339,11 +422,22 @@ export default function ReservaPublica() {
                   {HORAS.map(h=>{
                     const inicio = minutosDesde(h);
                     const fin = inicio + (servicio?.duracion || 30);
-                    const finHorario = minutosDesde(config.horario_fin || "19:00");
+                    const finHorario = minutosDesde(horarioFinDia || "19:00");
                     const ahora = new Date();
                     const esHoy = fecha === ahora.toLocaleDateString("en-CA");
                     const yaPaso = esHoy && inicio <= (ahora.getHours()*60 + ahora.getMinutes());
-                    const ocupada = yaPaso || fin > finHorario || bloqueos.some(b => inicio < b.fin && fin > b.inicio);
+                    let ocupada;
+                    if (yaPaso || fin > finHorario) {
+                      ocupada = true;
+                    } else if (calificados.length === 0) {
+                      ocupada = itemsDia.some(b => { const bIni=minutosDesde(b.hora); return inicio < (bIni+b.duracion) && fin > bIni; });
+                    } else if (profesionalElegido === "cualquiera") {
+                      ocupada = !calificados.some(p => profesionalLibre(p, inicio, fin));
+                    } else if (profesionalElegido) {
+                      ocupada = !profesionalLibre(profesionalElegido, inicio, fin);
+                    } else {
+                      ocupada = true; // aún no elige profesional
+                    }
                     return <button key={h} disabled={ocupada} onClick={()=>setHora(h)}
                       className={`py-2 rounded-lg text-sm font-medium transition-all ${ocupada?"bg-gray-100 text-gray-300 cursor-not-allowed line-through":hora===h?"bg-rose-500 text-white":"bg-gray-50 text-gray-700 hover:bg-rose-50 hover:text-rose-600"}`}>
                       {h}
@@ -351,6 +445,8 @@ export default function ReservaPublica() {
                   })}
                 </div>
               </div>
+            )}
+            </>
             )}
             {fecha&&hora&&(
               <button onClick={()=>setPaso(3)}
