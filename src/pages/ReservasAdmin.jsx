@@ -136,10 +136,10 @@ export default function ReservasAdmin() {
   const pendientes = reservas.filter(r => r.estado === "pendiente").length;
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {comprobanteVer && <ModalComprobante url={comprobanteVer} onClose={() => setComprobanteVer(null)} />}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Reservas en línea</h1>
           <p className="text-sm text-gray-400 mt-0.5">
@@ -148,7 +148,7 @@ export default function ReservasAdmin() {
               : "Todo al día"}
           </p>
         </div>
-        <button onClick={cargar} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <button onClick={cargar} className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
           <RefreshCw size={16} className={`text-gray-400 ${cargando ? "animate-spin" : ""}`} />
         </button>
       </div>
@@ -175,7 +175,7 @@ export default function ReservasAdmin() {
           const cfg = ESTADO_CONFIG[r.estado] || ESTADO_CONFIG.pendiente;
           const Icon = cfg.icon;
           return (
-            <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-5">
+            <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -189,7 +189,7 @@ export default function ReservasAdmin() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
                       <Calendar size={11} />
                       {new Date(r.fecha + "T12:00:00").toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "short" })} · {r.hora}

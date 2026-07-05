@@ -167,31 +167,31 @@ export default function Cobros() {
   const filas = Object.values(grupos).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {modal && <NuevoCobro onClose={() => setModal(false)} onGuardado={cargar} />}
       {cobrandoGrupo && <ModalCobrarSaldo grupo={cobrandoGrupo} onClose={() => setCobrandoGrupo(null)} onGuardado={cargar} />}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Cobros</h1>
           <p className="text-sm text-gray-400 mt-0.5">{filas.length} transacciones</p>
         </div>
-        <button onClick={() => setModal(true)} className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
+        <button onClick={() => setModal(true)} className="flex items-center justify-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
           <Plus size={16} /> Registrar cobro
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
           <p className="text-xs text-gray-400">Total cobrado</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">${total.toFixed(2)}</p>
+          <p className="text-xl sm:text-2xl font-semibold text-gray-900 mt-1">${total.toFixed(2)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
           <p className="text-xs text-gray-400">Por cobrar</p>
-          <p className="text-2xl font-semibold text-amber-500 mt-1">${pendiente.toFixed(2)}</p>
+          <p className="text-xl sm:text-2xl font-semibold text-amber-500 mt-1">${pendiente.toFixed(2)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 col-span-2 sm:col-span-1">
           <p className="text-xs text-gray-400">Transacciones</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">{filas.length}</p>
+          <p className="text-xl sm:text-2xl font-semibold text-gray-900 mt-1">{filas.length}</p>
         </div>
       </div>
 
@@ -203,12 +203,13 @@ export default function Cobros() {
             <button onClick={() => setModal(true)} className="mt-3 text-rose-500 text-sm hover:underline">+ Registrar primer cobro</button>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cliente</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden md:table-cell">Servicio</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Método</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden sm:table-cell">Método</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-400">Monto</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-400">Estado</th>
               </tr>
@@ -230,7 +231,7 @@ export default function Cobros() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-500 hidden md:table-cell">{g.servicio}</td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3 hidden sm:table-cell">
                       <div className="flex items-center gap-1.5 text-sm text-gray-500">
                         <Icon size={14} className="text-gray-400" />{g.metodo}
                       </div>
@@ -259,6 +260,7 @@ export default function Cobros() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

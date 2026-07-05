@@ -166,17 +166,17 @@ export function Servicios() {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {(modal || editando) && (
         <ServicioModal servicio={editando} iconos={iconos} onClose={() => { setModal(false); setEditando(null); }} onGuardado={cargar}/>
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Servicios</h1>
           <p className="text-sm text-gray-400 mt-0.5">{servicios.length} disponibles</p>
         </div>
         <button onClick={() => setModal(true)}
-          className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
+          className="flex items-center justify-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
           <Plus size={16}/> Nuevo servicio
         </button>
       </div>

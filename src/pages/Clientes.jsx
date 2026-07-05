@@ -237,7 +237,7 @@ export default function Clientes() {
   );
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {(modalNuevo || editando) && (
         <ClienteModal
           cliente={editando}
@@ -253,13 +253,13 @@ export default function Clientes() {
         />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Clientes</h1>
           <p className="text-sm text-gray-400 mt-0.5">{clientes.length} registrados</p>
         </div>
         <button onClick={() => setModalNuevo(true)}
-          className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
+          className="flex items-center justify-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
           <Plus size={16}/> Nuevo cliente
         </button>
       </div>
@@ -281,12 +281,13 @@ export default function Clientes() {
             {!busqueda && <button onClick={() => setModalNuevo(true)} className="mt-3 text-rose-500 text-sm hover:underline">+ Agregar primer cliente</button>}
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cédula</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cliente</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Teléfono</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden sm:table-cell">Teléfono</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden md:table-cell">Email</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Fidelidad</th>
                 <th className="px-5 py-3 text-xs font-medium text-gray-400"></th>
@@ -311,7 +312,7 @@ export default function Clientes() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-500 cursor-pointer" onClick={() => setSeleccionado(c)}>{c.telefono||"—"}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500 cursor-pointer hidden sm:table-cell" onClick={() => setSeleccionado(c)}>{c.telefono||"—"}</td>
                   <td className="px-5 py-3 text-sm text-gray-500 hidden md:table-cell cursor-pointer" onClick={() => setSeleccionado(c)}>{c.email||"—"}</td>
                   <td className="px-5 py-3 cursor-pointer" onClick={() => setSeleccionado(c)}>
                     <BadgeFidelidad visitas={visitas[c.nombre] || 0}/>
@@ -326,6 +327,7 @@ export default function Clientes() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

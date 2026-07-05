@@ -396,7 +396,7 @@ export default function Agenda() {
   const citasCanceladas = citas.filter(c=>c.estado==="cancelada");
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {(modal || citaEditando) && (
         <NuevaCitaModal
           onClose={()=>{setModal(false);setCitaEditando(null);}}
@@ -426,10 +426,10 @@ export default function Agenda() {
           </span>
           <button onClick={()=>setPaginaSemana(p=>p+1)} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
         </div>
-        <div className="grid grid-cols-6 gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:grid sm:grid-cols-6 sm:overflow-visible">
           {diasSemana.map(d=>(
             <button key={d.fecha} onClick={()=>setDiaSeleccionado(d.fecha)}
-              className={`flex flex-col items-center py-2 rounded-lg transition-colors text-xs font-medium ${diaSeleccionado===d.fecha?"bg-rose-500 text-white":d.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200":"hover:bg-gray-50 text-gray-600"}`}>
+              className={`flex-shrink-0 w-14 sm:w-auto flex flex-col items-center py-2 rounded-lg transition-colors text-xs font-medium ${diaSeleccionado===d.fecha?"bg-rose-500 text-white":d.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200":"hover:bg-gray-50 text-gray-600"}`}>
               {d.label.split(" ").map((p,i)=><span key={i} className={i===1?"text-base font-bold mt-0.5":""}>{p}</span>)}
             </button>
           ))}
@@ -449,32 +449,36 @@ export default function Agenda() {
           <div className="space-y-3">
             {citasActivas.map(c=>(
               <div key={c.id} onClick={()=>setCitaEditando(c)}
-                className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors cursor-pointer">
-                <div className="flex-shrink-0 text-center w-14">
-                  <p className="text-sm font-semibold text-rose-500">{c.hora}</p>
-                  <p className="text-xs text-gray-400">{c.duracion}min</p>
+                className="flex flex-wrap items-center gap-3 sm:gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 text-center w-12 sm:w-14">
+                    <p className="text-sm font-semibold text-rose-500">{c.hora}</p>
+                    <p className="text-xs text-gray-400">{c.duracion}min</p>
+                  </div>
+                  <div className="w-px h-10 bg-gray-200 hidden sm:block"/>
+                  <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center text-xs font-semibold text-rose-600 flex-shrink-0">
+                    {c.cliente?.slice(0,2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{c.cliente}</p>
+                    <p className="text-xs text-gray-400 truncate">{c.servicio} · {c.profesional||"Sin asignar"}</p>
+                  </div>
                 </div>
-                <div className="w-px h-10 bg-gray-200"/>
-                <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center text-xs font-semibold text-rose-600 flex-shrink-0">
-                  {c.cliente?.slice(0,2).toUpperCase()}
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-[3.75rem] sm:ml-0">
+                  <EstadoBadge estado={c.estado}/>
+                  <p className="text-sm font-semibold text-gray-800 flex-shrink-0">${c.precio}</p>
+                  {c.estado!=="cobrada"&&c.estado!=="cancelada"&&(
+                    <button onClick={(e)=>{e.stopPropagation();setCitaCobro(c);}}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors flex-shrink-0">
+                      <CheckCircle size={13}/> Cobrar
+                    </button>
+                  )}
+                  {c.estado==="cobrada"&&(
+                    <span className="text-xs text-blue-500 font-medium flex-shrink-0 flex items-center gap-1">
+                      <CheckCircle size={13}/> Cobrada
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{c.cliente}</p>
-                  <p className="text-xs text-gray-400">{c.servicio} · {c.profesional||"Sin asignar"}</p>
-                </div>
-                <EstadoBadge estado={c.estado}/>
-                <p className="text-sm font-semibold text-gray-800 flex-shrink-0">${c.precio}</p>
-                {c.estado!=="cobrada"&&c.estado!=="cancelada"&&(
-                  <button onClick={(e)=>{e.stopPropagation();setCitaCobro(c);}}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors flex-shrink-0">
-                    <CheckCircle size={13}/> Cobrar
-                  </button>
-                )}
-                {c.estado==="cobrada"&&(
-                  <span className="text-xs text-blue-500 font-medium flex-shrink-0 flex items-center gap-1">
-                    <CheckCircle size={13}/> Cobrada
-                  </span>
-                )}
               </div>
             ))}
           </div>

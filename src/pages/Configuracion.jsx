@@ -22,6 +22,7 @@ const DEFAULT_CONFIG = {
   instagram: "",
   facebook: "",
   tiktok: "",
+  telegram: "",
   qr_deuna_url: "",
 };
 
@@ -97,14 +98,14 @@ export default function Configuracion() {
   );
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-5 max-w-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Configuración</h1>
           <p className="text-sm text-gray-400 mt-0.5">Datos del salón y página de reservas</p>
         </div>
         <button onClick={guardar} disabled={guardando}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${guardado?"bg-green-500 text-white":"bg-rose-500 text-white hover:bg-rose-600"} disabled:opacity-50`}>
+          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${guardado?"bg-green-500 text-white":"bg-rose-500 text-white hover:bg-rose-600"} disabled:opacity-50`}>
           <Save size={16}/>{guardado?"¡Guardado!":guardando?"Guardando...":"Guardar cambios"}
         </button>
       </div>

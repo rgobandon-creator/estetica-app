@@ -720,38 +720,40 @@ export default function ReservaPublica() {
         </div>
       </div>
 
-      {/* Botones flotantes de redes sociales + WhatsApp */}
-      <div className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-40">
-        {config.whatsapp && (
-          <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
-            target="_blank" rel="noopener noreferrer" title="WhatsApp"
-            className="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <IconoWhatsApp size={24}/>
-          </a>
-        )}
-        {config.instagram && (
-          <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" title="Instagram"
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <IconoInstagram size={22}/>
-          </a>
-        )}
-        {config.facebook && (
-          <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" title="Facebook"
-            className="w-12 h-12 rounded-full bg-[#1877F2] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <IconoFacebook size={22}/>
-          </a>
-        )}
-        {config.tiktok && (
-          <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" title="TikTok"
-            className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <IconoTikTok size={20}/>
-          </a>
-        )}
-      </div>
+      {/* Redes sociales al pie, antes de la ubicación */}
+      {(config.whatsapp || config.instagram || config.facebook || config.tiktok) && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          {config.whatsapp && (
+            <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
+              target="_blank" rel="noopener noreferrer" title="WhatsApp"
+              className="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+              <IconoWhatsApp size={24}/>
+            </a>
+          )}
+          {config.instagram && (
+            <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" title="Instagram"
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+              <IconoInstagram size={22}/>
+            </a>
+          )}
+          {config.facebook && (
+            <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" title="Facebook"
+              className="w-12 h-12 rounded-full bg-[#1877F2] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+              <IconoFacebook size={22}/>
+            </a>
+          )}
+          {config.tiktok && (
+            <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" title="TikTok"
+              className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+              <IconoTikTok size={20}/>
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Pie de página con dirección */}
       {config.direccion && (
-        <div className="text-center px-4 pb-8 pt-2">
+        <div className="text-center px-4 pb-8 pt-3">
           <p className="text-xs text-gray-400">📍 {config.direccion}</p>
           {config.google_maps_url && (
             <a href={config.google_maps_url} target="_blank" rel="noopener noreferrer"
