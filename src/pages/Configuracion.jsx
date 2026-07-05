@@ -22,6 +22,7 @@ const DEFAULT_CONFIG = {
   instagram: "",
   facebook: "",
   tiktok: "",
+  qr_deuna_url: "",
 };
 
 const DIAS_SEMANA = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
@@ -41,6 +42,20 @@ export default function Configuracion() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [subiendoQR, setSubiendoQR] = useState(false);
+
+  async function subirQR(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSubiendoQR(true);
+    const ext = file.name.split(".").pop();
+    const path = `config/qr-deuna.${ext}`;
+    const { error } = await supabase.storage.from("comprobantes").upload(path, file, { upsert: true });
+    if (error) { alert("Error al subir: " + error.message); setSubiendoQR(false); return; }
+    const { data: urlData } = supabase.storage.from("comprobantes").getPublicUrl(path);
+    setConfig(c => ({ ...c, qr_deuna_url: urlData.publicUrl + "?t=" + Date.now() }));
+    setSubiendoQR(false);
+  }
 
   useEffect(() => {
     supabase.from("configuracion").select("*").eq("clave", CONFIG_KEY).single()
@@ -208,6 +223,19 @@ export default function Configuracion() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
           </div>
         ))}
+      </div>
+
+      {/* Pago con De Una */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+        <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2"><CreditCard size={15} className="text-rose-400"/>Pago con De Una (QR)</h2>
+        <p className="text-xs text-gray-400">Sube la imagen del código QR de tu cuenta De Una. El cliente podrá elegir pagar con este QR en vez de transferencia.</p>
+        {config.qr_deuna_url && (
+          <img src={config.qr_deuna_url} alt="QR De Una" className="w-40 h-40 object-contain border border-gray-100 rounded-lg"/>
+        )}
+        <label className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:border-rose-300 cursor-pointer w-fit">
+          {subiendoQR ? "Subiendo..." : config.qr_deuna_url ? "Cambiar QR" : "Subir QR"}
+          <input type="file" accept="image/*" className="hidden" onChange={subirQR} disabled={subiendoQR}/>
+        </label>
       </div>
     </div>
   );

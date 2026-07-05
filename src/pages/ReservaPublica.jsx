@@ -25,6 +25,7 @@ const CONFIG_DEFAULT = {
   instagram: "",
   facebook: "",
   tiktok: "",
+  qr_deuna_url: "",
 };
 
 const EMOJI_CATEGORIA = {
@@ -146,6 +147,7 @@ export default function ReservaPublica() {
   const [profesionales, setProfesionales] = useState([]);
   const [profesionalElegido, setProfesionalElegido] = useState(null); // null | 'cualquiera' | objeto profesional
   const [itemsDia, setItemsDia] = useState([]);
+  const [metodoPago, setMetodoPago] = useState("transferencia");
   const [archivo, setArchivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
@@ -547,8 +549,33 @@ export default function ReservaPublica() {
             <div className="text-center">
               <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3"><span className="text-2xl">🏦</span></div>
               <h2 className="text-lg font-semibold text-gray-900">Realiza el abono de ${config.abono_minimo}</h2>
-              <p className="text-sm text-gray-400 mt-1">Transfiere y sube el comprobante aquí</p>
+              <p className="text-sm text-gray-400 mt-1">Elige tu método de pago y sube el comprobante aquí</p>
             </div>
+
+            {config.qr_deuna_url && (
+              <div className="flex bg-gray-100 rounded-xl p-1">
+                <button onClick={()=>setMetodoPago("transferencia")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${metodoPago==="transferencia"?"bg-white text-rose-600 shadow-sm":"text-gray-500"}`}>
+                  🏦 Transferencia
+                </button>
+                <button onClick={()=>setMetodoPago("deuna")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${metodoPago==="deuna"?"bg-white text-rose-600 shadow-sm":"text-gray-500"}`}>
+                  📱 De Una (QR)
+                </button>
+              </div>
+            )}
+
+            {metodoPago === "deuna" && config.qr_deuna_url ? (
+              <div className="bg-white rounded-xl border border-gray-100 p-5 text-center">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Escanea con la app De Una</p>
+                <img src={config.qr_deuna_url} alt="QR De Una" className="w-56 h-56 object-contain mx-auto rounded-lg border border-gray-100"/>
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <span className="text-sm text-gray-500">Monto exacto:</span>
+                  <span className="text-sm font-bold text-rose-600">${config.abono_minimo}.00</span>
+                  <CopiarBtn texto={`${config.abono_minimo}.00`}/>
+                </div>
+              </div>
+            ) : (
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Datos para transferencia</p>
               <div className="space-y-3">
@@ -563,6 +590,7 @@ export default function ReservaPublica() {
                 ))}
               </div>
             </div>
+            )}
             <div className="bg-rose-50 rounded-xl p-4 border border-rose-100 text-center">
               <p className="text-xs text-rose-500 font-medium mb-1">Tu código de reserva</p>
               <div className="flex items-center justify-center gap-2">
