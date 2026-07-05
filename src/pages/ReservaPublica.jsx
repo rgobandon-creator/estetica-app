@@ -63,6 +63,37 @@ function emojiPorNombre(nombre, categoria) {
 
 const DIAS_MAP = { domingo:0, lunes:1, martes:2, "miércoles":3, jueves:4, viernes:5, sábado:6 };
 
+function IconoWhatsApp({ size=24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="white">
+      <path d="M17.6 6.32A8.9 8.9 0 0 0 12.05 3.5 8.9 8.9 0 0 0 3.5 12.05c0 1.57.4 3.05 1.17 4.36L3.5 20.5l4.24-1.11a8.87 8.87 0 0 0 4.31 1.1h.01c4.91 0 8.9-3.99 8.9-8.9a8.87 8.87 0 0 0-2.36-6.27ZM12.06 19a7.4 7.4 0 0 1-3.77-1.03l-.27-.16-2.8.73.75-2.73-.18-.28a7.4 7.4 0 0 1-1.13-3.94c0-4.1 3.33-7.43 7.43-7.43 1.98 0 3.85.78 5.25 2.18a7.37 7.37 0 0 1 2.18 5.25c0 4.1-3.35 7.41-7.46 7.41Zm4.07-5.56c-.22-.11-1.31-.65-1.51-.72-.2-.08-.35-.11-.5.11-.15.22-.57.72-.7.87-.13.15-.26.16-.48.05-.22-.11-1.29-.47-2.32-1.44-.85-.76-1.43-1.7-1.6-1.98-.16-.29-.02-.44.13-.6.13-.15.29-.38.44-.57.15-.19.19-.32.29-.53.1-.22.05-.4-.03-.56-.08-.15-.65-1.56-.89-2.14-.24-.57-.48-.49-.66-.5h-.56c-.19 0-.5.07-.68.35-.19.28-.72.98-.72 2.38s.75 2.75.85 2.94c.11.19 1.51 2.5 3.75 3.44 2.24.93 2.24.62 2.64.58.4-.04 1.31-.53 1.5-1.05.19-.51.19-.95.13-1.05-.06-.09-.22-.15-.44-.26Z"/>
+    </svg>
+  );
+}
+function IconoFacebook({ size=24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="white">
+      <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8v-6.65H7.9V12H10V9.8c0-2.4 1.42-3.72 3.6-3.72.68 0 1.4.05 2.1.15v2.34h-1.2c-1.18 0-1.55.73-1.55 1.48V12h2.66l-.43 3.15H12.95V22c4.56-.93 9.05-4.96 9.05-10Z"/>
+    </svg>
+  );
+}
+function IconoInstagram({ size=24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
+      <rect x="3" y="3" width="18" height="18" rx="5"/>
+      <circle cx="12" cy="12" r="4.2"/>
+      <circle cx="17.2" cy="6.8" r="0.9" fill="white" stroke="none"/>
+    </svg>
+  );
+}
+function IconoTikTok({ size=24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="white">
+      <path d="M16.6 3H14v12.4a2.9 2.9 0 1 1-2.1-2.79V9.9a5.6 5.6 0 1 0 4.7 5.5V8.63a6.9 6.9 0 0 0 4 1.27V7.2a4 4 0 0 1-4-4.2Z"/>
+    </svg>
+  );
+}
+
 function quitarAcentos(s) {
   return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -671,25 +702,25 @@ export default function ReservaPublica() {
           <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
             target="_blank" rel="noopener noreferrer" title="WhatsApp"
             className="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <MessageCircle size={22} fill="white" className="text-[#25D366]"/>
+            <IconoWhatsApp size={24}/>
           </a>
         )}
         {config.instagram && (
           <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" title="Instagram"
             className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <Instagram size={21}/>
+            <IconoInstagram size={22}/>
           </a>
         )}
         {config.facebook && (
           <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" title="Facebook"
             className="w-12 h-12 rounded-full bg-[#1877F2] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <Facebook size={21} fill="white"/>
+            <IconoFacebook size={22}/>
           </a>
         )}
         {config.tiktok && (
           <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" title="TikTok"
             className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
-            <Music2 size={21}/>
+            <IconoTikTok size={20}/>
           </a>
         )}
       </div>
