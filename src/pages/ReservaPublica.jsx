@@ -142,6 +142,7 @@ export default function ReservaPublica() {
   const [paginaDia, setPaginaDia] = useState(0);
   const [categoriaAbierta, setCategoriaAbierta] = useState(null);
   const [ordenCategorias, setOrdenCategorias] = useState([]);
+  const [iconosCategorias, setIconosCategorias] = useState(EMOJI_CATEGORIA);
   const [profesionales, setProfesionales] = useState([]);
   const [profesionalElegido, setProfesionalElegido] = useState(null); // null | 'cualquiera' | objeto profesional
   const [itemsDia, setItemsDia] = useState([]);
@@ -163,6 +164,8 @@ export default function ReservaPublica() {
       .then(({ data }) => setProfesionales(data || []));
     supabase.from("configuracion").select("valor").eq("clave","categorias_orden").maybeSingle()
       .then(({ data }) => setOrdenCategorias(data?.valor || []));
+    supabase.from("configuracion").select("valor").eq("clave","categorias_iconos").maybeSingle()
+      .then(({ data }) => setIconosCategorias({ ...EMOJI_CATEGORIA, ...(data?.valor || {}) }));
   }, []);
 
   const calificados = servicio ? profesionales.filter(p => (p.servicios||[]).includes(servicio.nombre)) : [];
@@ -344,7 +347,7 @@ export default function ReservaPublica() {
                     <button onClick={() => setCategoriaAbierta(categoriaAbierta === categoria ? null : categoria)}
                       className="w-full flex items-center justify-between p-4 hover:bg-rose-50 transition-colors text-left">
                       <span className="flex items-center gap-2 font-medium text-gray-800">
-                        <span className="text-xl">{EMOJI_CATEGORIA[categoria] || "✨"}</span>
+                        <span className="text-xl">{iconosCategorias[categoria] || "✨"}</span>
                         {categoria}
                         <span className="text-xs font-normal text-gray-400">({items.length})</span>
                       </span>

@@ -3,20 +3,33 @@ import { Scissors, Clock, Tag, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown }
 import { supabase } from "../lib/supabase";
 
 const CATEGORIAS_BASE = ["Cabello", "Uñas", "Depilación", "Spa", "Maquillaje", "Otro"];
+const EMOJI_DEFAULT = { "Cabello":"✂️", "Uñas":"💅", "Depilación":"🌸", "Spa":"🤲", "Maquillaje":"💄", "Otro":"✨" };
 
-function ServicioModal({ servicio, onClose, onGuardado }) {
+function ServicioModal({ servicio, iconos, onClose, onGuardado }) {
   const [form, setForm] = useState(servicio || { nombre:"", duracion:30, precio:0, categoria:"Cabello", orden:0 });
+  const [nuevaCategoria, setNuevaCategoria] = useState(false);
+  const [catNombre, setCatNombre] = useState("");
+  const [catEmoji, setCatEmoji] = useState("✨");
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!servicio?.id;
 
   async function guardar() {
     if (!form.nombre || !form.precio) { alert("Nombre y precio son obligatorios"); return; }
+    let categoriaFinal = form.categoria;
     setCargando(true);
+
+    if (nuevaCategoria) {
+      if (!catNombre.trim()) { alert("Escribe el nombre de la nueva categoría"); setCargando(false); return; }
+      categoriaFinal = catNombre.trim();
+      const iconosActualizados = { ...iconos, [categoriaFinal]: catEmoji || "✨" };
+      await supabase.from("configuracion").upsert({ clave: "categorias_iconos", valor: iconosActualizados }, { onConflict: "clave" });
+    }
+
     let error;
     if (esEdicion) {
-      ({ error } = await supabase.from("servicios").update({ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria, orden:form.orden||0 }).eq("id", servicio.id));
+      ({ error } = await supabase.from("servicios").update({ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:categoriaFinal, orden:form.orden||0 }).eq("id", servicio.id));
     } else {
-      ({ error } = await supabase.from("servicios").insert([{ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:form.categoria, orden:form.orden||0 }]));
+      ({ error } = await supabase.from("servicios").insert([{ nombre:form.nombre, duracion:form.duracion, precio:form.precio, categoria:categoriaFinal, orden:form.orden||0 }]));
     }
     setCargando(false);
     if (!error) { onGuardado(); onClose(); }
@@ -48,10 +61,29 @@ function ServicioModal({ servicio, onClose, onGuardado }) {
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Categoría</label>
-            <select value={form.categoria} onChange={e => setForm({...form, categoria:e.target.value})}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300">
-              {CATEGORIAS_BASE.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            {!nuevaCategoria ? (
+              <select value={form.categoria} onChange={e => {
+                  if (e.target.value === "__nueva__") { setNuevaCategoria(true); }
+                  else setForm({...form, categoria:e.target.value});
+                }}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300">
+                {[...new Set([...CATEGORIAS_BASE, ...Object.keys(iconos||{})])].map(c =>
+                  <option key={c} value={c}>{iconos?.[c]||EMOJI_DEFAULT[c]||"✨"} {c}</option>
+                )}
+                <option value="__nueva__">➕ Nueva categoría...</option>
+              </select>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input value={catEmoji} onChange={e=>setCatEmoji(e.target.value)} maxLength={4}
+                    placeholder="✨" className="w-16 text-center border border-gray-200 rounded-lg px-2 py-2 text-lg"/>
+                  <input value={catNombre} onChange={e=>setCatNombre(e.target.value)}
+                    placeholder="Nombre de la categoría (ej: Pestañas)"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+                </div>
+                <button onClick={()=>setNuevaCategoria(false)} className="text-xs text-gray-400 hover:text-rose-500">← Elegir de la lista existente</button>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -96,18 +128,21 @@ function ServicioModal({ servicio, onClose, onGuardado }) {
 export function Servicios() {
   const [servicios, setServicios] = useState([]);
   const [ordenCategorias, setOrdenCategorias] = useState([]);
+  const [iconos, setIconos] = useState({});
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
 
   async function cargar() {
     setCargando(true);
-    const [{ data: s }, { data: cfg }] = await Promise.all([
+    const [{ data: s }, { data: cfgOrden }, { data: cfgIconos }] = await Promise.all([
       supabase.from("servicios").select("*").order("orden").order("nombre"),
       supabase.from("configuracion").select("valor").eq("clave","categorias_orden").maybeSingle(),
+      supabase.from("configuracion").select("valor").eq("clave","categorias_iconos").maybeSingle(),
     ]);
     setServicios(s || []);
-    setOrdenCategorias(cfg?.valor || []);
+    setOrdenCategorias(cfgOrden?.valor || []);
+    setIconos({ ...EMOJI_DEFAULT, ...(cfgIconos?.valor || {}) });
     setCargando(false);
   }
 
@@ -133,7 +168,7 @@ export function Servicios() {
   return (
     <div className="p-6 space-y-5">
       {(modal || editando) && (
-        <ServicioModal servicio={editando} onClose={() => { setModal(false); setEditando(null); }} onGuardado={cargar}/>
+        <ServicioModal servicio={editando} iconos={iconos} onClose={() => { setModal(false); setEditando(null); }} onGuardado={cargar}/>
       )}
       <div className="flex items-center justify-between">
         <div>
@@ -152,7 +187,7 @@ export function Servicios() {
         <div key={cat} className="bg-white rounded-xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              <Tag size={14} className="text-rose-400"/>{cat}
+              <span className="text-base">{iconos[cat] || "✨"}</span>{cat}
             </h2>
             <div className="flex items-center gap-1">
               <button onClick={() => moverCategoria(cat, -1)} disabled={i===0}
