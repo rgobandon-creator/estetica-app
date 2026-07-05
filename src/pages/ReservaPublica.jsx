@@ -292,13 +292,6 @@ export default function ReservaPublica() {
               {config.dias?.slice(0,2).map(d=>d.charAt(0).toUpperCase()+d.slice(1)).join(" – ")} · {config.horario_inicio} – {config.horario_fin}
             </p>
           </div>
-          {config.whatsapp && (
-            <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
-              target="_blank" rel="noopener noreferrer"
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors">
-              📲 <span className="hidden sm:inline">WhatsApp</span>
-            </a>
-          )}
         </div>
       </div>
 
@@ -647,25 +640,25 @@ export default function ReservaPublica() {
         {config.whatsapp && (
           <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
             target="_blank" rel="noopener noreferrer" title="WhatsApp"
-            className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
             <MessageCircle size={20}/>
           </a>
         )}
         {config.instagram && (
           <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" title="Instagram"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
             <Instagram size={19}/>
           </a>
         )}
         {config.facebook && (
           <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" title="Facebook"
-            className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 via-blue-600 to-blue-800 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
             <Facebook size={19}/>
           </a>
         )}
         {config.tiktok && (
           <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" title="TikTok"
-            className="w-11 h-11 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-cyan-400 via-gray-900 to-pink-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
             <Music2 size={19}/>
           </a>
         )}
