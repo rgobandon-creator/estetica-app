@@ -231,13 +231,6 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
         </div>
         <div className="p-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Cliente *</label>
-            <input list="lista-clientes" placeholder="Busca o escribe nombre" value={form.cliente}
-              onChange={e=>seleccionarCliente(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
-            <datalist id="lista-clientes">{clientes.map(c=><option key={c.nombre} value={c.nombre}/>)}</datalist>
-          </div>
-          <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Cédula *</label>
             <input placeholder="10 dígitos" value={form.cedula} inputMode="numeric" maxLength={10}
               onChange={e=>buscarPorCedula(e.target.value.replace(/\D/g,""))}
@@ -245,6 +238,13 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
             {form.cedula.length===10 && !validarCedulaEcuador(form.cedula) && (
               <p className="text-xs text-red-500 mt-1">Cédula no válida</p>
             )}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Cliente *</label>
+            <input list="lista-clientes" placeholder="Busca o escribe nombre" value={form.cliente}
+              onChange={e=>seleccionarCliente(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+            <datalist id="lista-clientes">{clientes.map(c=><option key={c.nombre} value={c.nombre}/>)}</datalist>
           </div>
           {clienteInfo && (
             <div className="bg-rose-50 rounded-xl p-3 border border-rose-100 space-y-1">

@@ -74,8 +74,8 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
         </div>
         <div className="p-6 space-y-4">
           {[
-            ["nombre","Nombre completo *","Ej: María Torres"],
             ["cedula","Cédula","10 dígitos"],
+            ["nombre","Nombre completo *","Ej: María Torres"],
             ["telefono","Teléfono","0987654321"],
             ["email","Email","cliente@email.com"],
             ["alergias","Alergias","Ninguna"],
@@ -232,7 +232,8 @@ export default function Clientes() {
 
   const filtrados = clientes.filter(c =>
     c.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.telefono?.includes(busqueda)
+    c.telefono?.includes(busqueda) ||
+    c.cedula?.includes(busqueda)
   );
 
   return (
@@ -265,7 +266,7 @@ export default function Clientes() {
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-        <input type="text" placeholder="Buscar por nombre o teléfono..." value={busqueda}
+        <input type="text" placeholder="Buscar por cédula, nombre o teléfono..." value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"/>
       </div>
@@ -283,6 +284,7 @@ export default function Clientes() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cédula</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Cliente</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400">Teléfono</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 hidden md:table-cell">Email</th>
@@ -293,6 +295,9 @@ export default function Clientes() {
             <tbody>
               {filtrados.map(c => (
                 <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-rose-50 transition-colors">
+                  <td className="px-5 py-3 text-sm text-gray-600 cursor-pointer" onClick={() => setSeleccionado(c)}>
+                    {c.cedula || <span className="text-gray-300">—</span>}
+                  </td>
                   <td className="px-5 py-3 cursor-pointer" onClick={() => setSeleccionado(c)}>
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-xs font-semibold text-rose-600 flex-shrink-0">
