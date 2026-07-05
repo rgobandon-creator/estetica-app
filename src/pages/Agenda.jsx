@@ -81,6 +81,21 @@ function RegistrarCobroModal({ cita, onClose, onGuardado }) {
   );
 }
 
+function validarCedulaEcuador(cedula) {
+  if (!/^\d{10}$/.test(cedula)) return false;
+  const provincia = parseInt(cedula.slice(0,2), 10);
+  if (provincia < 1 || provincia > 24) return false;
+  const digitos = cedula.split("").map(Number);
+  const verificador = digitos[9];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let val = digitos[i];
+    if (i % 2 === 0) { val *= 2; if (val > 9) val -= 9; }
+    suma += val;
+  }
+  return (10 - (suma % 10)) % 10 === verificador;
+}
+
 function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   const [servicios, setServicios] = useState([]);
   const [profesionales, setProfesionales] = useState([]);
@@ -89,7 +104,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   const [clienteInfo, setClienteInfo] = useState(null);
   const [esNuevo, setEsNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ telefono:"", email:"", alergias:"Ninguna" });
-  const [form, setForm] = useState(citaEditar || { cliente:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
+  const [form, setForm] = useState(citaEditar || { cliente:"", cedula:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
   const [montoRecibido, setMontoRecibido] = useState(0);
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!citaEditar?.id;
@@ -101,7 +116,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
     supabase.from("servicios").select("*").order("nombre").then(({data})=>setServicios(data||[]));
     supabase.from("profesionales").select("*").eq("activo",true).order("nombre").then(({data})=>setProfesionales(data||[]));
     Promise.all([
-      supabase.from("clientes").select("nombre,telefono,email,alergias,notas").order("nombre"),
+      supabase.from("clientes").select("nombre,cedula,telefono,email,alergias,notas").order("nombre"),
       supabase.from("reservas_publicas").select("nombre,telefono,email").neq("estado","cancelada")
     ]).then(([{data:c},{data:r}])=>{
       const map={};
@@ -137,9 +152,19 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   function seleccionarCliente(nombre){
     setForm(f=>({...f,cliente:nombre}));
     const found=clientes.find(c=>c.nombre===nombre);
-    if(found){setClienteInfo(found);setEsNuevo(false);}
+    if(found){setClienteInfo(found);setEsNuevo(false);setForm(f=>({...f,cliente:nombre,cedula:found.cedula||""}));}
     else if(nombre){setClienteInfo(null);setEsNuevo(true);}
     else{setClienteInfo(null);setEsNuevo(false);}
+  }
+
+  function buscarPorCedula(cedula){
+    setForm(f=>({...f,cedula}));
+    if(cedula.length!==10)return;
+    const found=clientes.find(c=>c.cedula===cedula);
+    if(found){
+      setForm(f=>({...f,cliente:found.nombre,cedula}));
+      setClienteInfo(found);setEsNuevo(false);
+    }
   }
 
   function seleccionarServicio(val){
@@ -149,12 +174,13 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   }
 
   async function guardar(){
-    if(!form.cliente||!form.servicio||!form.hora){alert("Cliente, servicio y hora son obligatorios");return;}
+    if(!form.cliente||!form.servicio||!form.hora||!form.cedula){alert("Cliente, cédula, servicio y hora son obligatorios");return;}
+    if(!validarCedulaEcuador(form.cedula)){alert("La cédula ingresada no es válida");return;}
     setCargando(true);
 
     if(esEdicion){
       const {error}=await supabase.from("citas").update({
-        cliente:form.cliente, servicio:form.servicio, profesional:form.profesional,
+        cliente:form.cliente, cedula:form.cedula, servicio:form.servicio, profesional:form.profesional,
         fecha:form.fecha, hora:form.hora, duracion:form.duracion, precio:form.precio, estado:form.estado,
       }).eq("id", citaEditar.id);
       setCargando(false);
@@ -163,9 +189,14 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
       return;
     }
 
-    if(esNuevo&&!clientes.find(c=>c.nombre===form.cliente)){
-      await supabase.from("clientes").insert([{nombre:form.cliente,...nuevoCliente}]);
+    // Buscar cliente existente por cédula (identificador real) antes de crear uno nuevo
+    const { data: clienteExistente } = await supabase.from("clientes").select("*").eq("cedula", form.cedula).maybeSingle();
+    if (clienteExistente) {
+      form.cliente = clienteExistente.nombre; // usamos el nombre ya registrado, evita duplicados por variaciones de escritura
+    } else if (esNuevo) {
+      await supabase.from("clientes").insert([{nombre:form.cliente, cedula:form.cedula, ...nuevoCliente}]);
     }
+
     const {data:citaNueva,error}=await supabase.from("citas").insert([form]).select().single();
 
     if(!error && citaNueva){
@@ -205,6 +236,15 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
               onChange={e=>seleccionarCliente(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
             <datalist id="lista-clientes">{clientes.map(c=><option key={c.nombre} value={c.nombre}/>)}</datalist>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Cédula *</label>
+            <input placeholder="10 dígitos" value={form.cedula} inputMode="numeric" maxLength={10}
+              onChange={e=>buscarPorCedula(e.target.value.replace(/\D/g,""))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+            {form.cedula.length===10 && !validarCedulaEcuador(form.cedula) && (
+              <p className="text-xs text-red-500 mt-1">Cédula no válida</p>
+            )}
           </div>
           {clienteInfo && (
             <div className="bg-rose-50 rounded-xl p-3 border border-rose-100 space-y-1">

@@ -94,6 +94,22 @@ function IconoTikTok({ size=24 }) {
   );
 }
 
+function validarCedulaEcuador(cedula) {
+  if (!/^\d{10}$/.test(cedula)) return false;
+  const provincia = parseInt(cedula.slice(0,2), 10);
+  if (provincia < 1 || provincia > 24) return false;
+  const digitos = cedula.split("").map(Number);
+  const verificador = digitos[9];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let val = digitos[i];
+    if (i % 2 === 0) { val *= 2; if (val > 9) val -= 9; }
+    suma += val;
+  }
+  const resultado = (10 - (suma % 10)) % 10;
+  return resultado === verificador;
+}
+
 function quitarAcentos(s) {
   return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -168,7 +184,7 @@ export default function ReservaPublica() {
   const [fecha, setFecha] = useState(null);
   const [hora, setHora] = useState(null);
   const [bloqueos, setBloqueos] = useState([]);
-  const [form, setForm] = useState({ nombre:"", telefono:"", email:"", notas:"" });
+  const [form, setForm] = useState({ nombre:"", telefono:"", cedula:"", email:"", notas:"" });
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [reservaId, setReservaId] = useState(null);
@@ -277,7 +293,8 @@ export default function ReservaPublica() {
   }
 
   async function enviarReserva() {
-    if (!form.nombre||!form.telefono) { setError("Nombre y teléfono son obligatorios"); return; }
+    if (!form.nombre||!form.telefono||!form.cedula) { setError("Nombre, cédula y teléfono son obligatorios"); return; }
+    if (!validarCedulaEcuador(form.cedula)) { setError("La cédula ingresada no es válida, revísala"); return; }
     setCargando(true); setError("");
 
     let profesionalFinal = null;
@@ -296,7 +313,7 @@ export default function ReservaPublica() {
     }
 
     const { data, error: err } = await supabase.from("reservas_publicas").insert([{
-      nombre:form.nombre, telefono:form.telefono, email:form.email,
+      nombre:form.nombre, telefono:form.telefono, cedula:form.cedula, email:form.email,
       servicio:servicio.nombre, fecha, hora, profesional: profesionalFinal,
       abono: config.abono_minimo||5,
       notas:form.notas, estado:"pendiente",
@@ -519,12 +536,14 @@ export default function ReservaPublica() {
               </div>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-              {[["nombre","Nombre completo *",User,"Ej: María Torres"],["telefono","WhatsApp *",Phone,"0987654321"],["email","Email (opcional)",Mail,"tu@email.com"]].map(([key,label,Icon,ph])=>(
+              {[["nombre","Nombre completo *",User,"Ej: María Torres"],["cedula","Cédula *",User,"10 dígitos"],["telefono","WhatsApp *",Phone,"0987654321"],["email","Email (opcional)",Mail,"tu@email.com"]].map(([key,label,Icon,ph])=>(
                 <div key={key}>
                   <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
                   <div className="relative">
                     <Icon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-                    <input placeholder={ph} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}
+                    <input placeholder={ph} value={form[key]}
+                      inputMode={key==="cedula"?"numeric":undefined} maxLength={key==="cedula"?10:undefined}
+                      onChange={e=>setForm({...form,[key]: key==="cedula" ? e.target.value.replace(/\D/g,"") : e.target.value})}
                       className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
                   </div>
                 </div>
@@ -536,7 +555,11 @@ export default function ReservaPublica() {
               </div>
             </div>
             {error&&<div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-600"><AlertCircle size={15}/>{error}</div>}
-            <button onClick={()=>{ if(!form.nombre||!form.telefono){setError("Nombre y teléfono son obligatorios");return;} setError(""); setMostrarConfirmacion(true); }} disabled={cargando}
+            <button onClick={()=>{
+                if(!form.nombre||!form.telefono||!form.cedula){setError("Nombre, cédula y teléfono son obligatorios");return;}
+                if(!validarCedulaEcuador(form.cedula)){setError("La cédula ingresada no es válida, revísala");return;}
+                setError(""); setMostrarConfirmacion(true);
+              }} disabled={cargando}
               className="w-full py-3 bg-rose-500 text-white rounded-xl font-medium hover:bg-rose-600 disabled:opacity-50 flex items-center justify-center gap-2">
               {cargando?"Registrando...":<><span>Ver instrucciones de pago</span><ArrowRight size={16}/></>}
             </button>
@@ -559,6 +582,7 @@ export default function ReservaPublica() {
                 <div className="flex justify-between text-sm"><span className="text-gray-500">Fecha</span><span className="font-medium">{fecha&&new Date(fecha+"T12:00:00").toLocaleDateString("es-EC",{weekday:"long",day:"numeric",month:"long"})}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-gray-500">Hora</span><span className="font-medium">{hora}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-gray-500">Nombre</span><span className="font-medium">{form.nombre}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-500">Cédula</span><span className="font-medium">{form.cedula}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-gray-500">WhatsApp</span><span className="font-medium">{form.telefono}</span></div>
               </div>
               <p className="text-xs text-gray-400 text-center">Al confirmar, se apartará este horario y deberás realizar el abono para asegurar tu cita.</p>
