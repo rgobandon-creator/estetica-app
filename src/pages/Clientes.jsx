@@ -18,18 +18,34 @@ function BadgeFidelidad({ visitas }) {
   );
 }
 
+function validarCedulaEcuador(cedula) {
+  if (!/^\d{10}$/.test(cedula)) return false;
+  const provincia = parseInt(cedula.slice(0,2), 10);
+  if (provincia < 1 || provincia > 24) return false;
+  const digitos = cedula.split("").map(Number);
+  const verificador = digitos[9];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let val = digitos[i];
+    if (i % 2 === 0) { val *= 2; if (val > 9) val -= 9; }
+    suma += val;
+  }
+  return (10 - (suma % 10)) % 10 === verificador;
+}
+
 function ClienteModal({ cliente, onClose, onGuardado }) {
-  const [form, setForm] = useState(cliente || { nombre:"", telefono:"", email:"", alergias:"Ninguna", notas:"" });
+  const [form, setForm] = useState(cliente || { nombre:"", cedula:"", telefono:"", email:"", alergias:"Ninguna", notas:"" });
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!cliente?.id;
 
   async function guardar() {
     if (!form.nombre) { alert("El nombre es obligatorio"); return; }
+    if (form.cedula && !validarCedulaEcuador(form.cedula)) { alert("La cédula ingresada no es válida"); return; }
     setCargando(true);
     let error;
     if (esEdicion) {
       ({ error } = await supabase.from("clientes").update({
-        nombre: form.nombre, telefono: form.telefono, email: form.email,
+        nombre: form.nombre, cedula: form.cedula||null, telefono: form.telefono, email: form.email,
         alergias: form.alergias, notas: form.notas
       }).eq("id", cliente.id));
     } else {
@@ -59,14 +75,20 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
         <div className="p-6 space-y-4">
           {[
             ["nombre","Nombre completo *","Ej: María Torres"],
+            ["cedula","Cédula","10 dígitos"],
             ["telefono","Teléfono","0987654321"],
             ["email","Email","cliente@email.com"],
             ["alergias","Alergias","Ninguna"],
           ].map(([key, label, ph]) => (
             <div key={key}>
               <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
-              <input placeholder={ph} value={form[key]||""} onChange={e => setForm({...form,[key]:e.target.value})}
+              <input placeholder={ph} value={form[key]||""}
+                inputMode={key==="cedula"?"numeric":undefined} maxLength={key==="cedula"?10:undefined}
+                onChange={e => setForm({...form,[key]: key==="cedula" ? e.target.value.replace(/\D/g,"") : e.target.value})}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
+              {key==="cedula" && form.cedula?.length===10 && !validarCedulaEcuador(form.cedula) && (
+                <p className="text-xs text-red-500 mt-1">Cédula no válida</p>
+              )}
             </div>
           ))}
           <div>
@@ -139,6 +161,9 @@ function FichaCliente({ cliente, onClose, onEditar }) {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Mail size={14} className="text-gray-400"/>{cliente.email||"—"}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600 col-span-2">
+              <span className="text-gray-400 text-xs">🪪 Cédula:</span> {cliente.cedula||"No registrada"}
             </div>
           </div>
           {cliente.alergias && cliente.alergias !== "Ninguna" && (
