@@ -545,8 +545,8 @@ export default function ReservaPublica() {
 
         {/* MODAL DE CONFIRMACIÓN */}
         {mostrarConfirmacion && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={()=>setMostrarConfirmacion(false)}>
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4" onClick={e=>e.stopPropagation()}>
               <div className="text-center">
                 <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-2">
                   <AlertCircle size={22} className="text-amber-500"/>

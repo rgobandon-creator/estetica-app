@@ -50,8 +50,8 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">{esEdicion ? "Editar cliente" : "Nuevo cliente"}</h2>
           <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
@@ -107,8 +107,8 @@ function FichaCliente({ cliente, onClose, onEditar }) {
   const visitasCobradas = historial.filter(c => c.estado === "cobrada").length;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-lg font-semibold text-rose-600">

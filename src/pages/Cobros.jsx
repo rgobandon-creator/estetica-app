@@ -17,8 +17,8 @@ function NuevoCobro({ onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-semibold text-gray-900">Registrar cobro</h2>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
@@ -96,8 +96,8 @@ function ModalCobrarSaldo({ grupo, onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">Cobrar saldo pendiente</h2>
           <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
