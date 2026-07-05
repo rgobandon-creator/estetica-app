@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Menu, Sparkles } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
@@ -14,10 +15,27 @@ import Configuracion from './pages/Configuracion'
 import Profesionales from './pages/Profesionales'
 
 function Layout({ user, onLogout }) {
+  const [sidebarAbierto, setSidebarAbierto] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => { setSidebarAbierto(false); }, [location.pathname]);
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} onLogout={onLogout} />
-      <main className="flex-1 overflow-auto">
+      <Sidebar user={user} onLogout={onLogout} open={sidebarAbierto} onClose={() => setSidebarAbierto(false)} />
+
+      {/* Barra superior visible solo en móvil */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-100 h-14 flex items-center px-4 gap-3">
+        <button onClick={() => setSidebarAbierto(true)} className="p-1.5 -ml-1.5 text-gray-600">
+          <Menu size={22}/>
+        </button>
+        <div className="w-7 h-7 rounded-lg bg-rose-500 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={14} className="text-white"/>
+        </div>
+        <span className="font-semibold text-gray-900 text-sm truncate">Panel de gestión</span>
+      </div>
+
+      <main className="flex-1 overflow-auto min-w-0 pt-14 lg:pt-0">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/agenda" element={<Agenda />} />
