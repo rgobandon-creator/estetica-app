@@ -4,7 +4,7 @@ import {
   Sparkles, Clock, User, Phone, Mail,
   CheckCircle, ChevronLeft, ChevronRight,
   Copy, Check, AlertCircle, ArrowRight, ArrowLeft,
-  Upload, X, Instagram, Facebook, MessageCircle, Music2
+  Upload, X, Instagram, Facebook, MessageCircle, Music2, Send
 } from "lucide-react";
 
 const CONFIG_DEFAULT = {
@@ -25,6 +25,7 @@ const CONFIG_DEFAULT = {
   instagram: "",
   facebook: "",
   tiktok: "",
+  telegram: "",
   qr_deuna_url: "",
 };
 
@@ -40,6 +41,7 @@ function linkRedSocial(valor, tipo) {
   if (tipo === "instagram") return `https://instagram.com/${usuario}`;
   if (tipo === "facebook") return `https://facebook.com/${usuario}`;
   if (tipo === "tiktok") return `https://tiktok.com/@${usuario}`;
+  if (tipo === "telegram") return `https://t.me/${usuario}`;
   return valor;
 }
 
@@ -668,26 +670,26 @@ export default function ReservaPublica() {
         {config.whatsapp && (
           <a href={`https://wa.me/593${config.whatsapp.startsWith("0")?config.whatsapp.slice(1):config.whatsapp}?text=Hola! Tengo una duda sobre una reserva en ${config.nombre}`}
             target="_blank" rel="noopener noreferrer" title="WhatsApp"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-            <MessageCircle size={20}/>
+            className="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+            <MessageCircle size={22} fill="white" className="text-[#25D366]"/>
           </a>
         )}
         {config.instagram && (
           <a href={linkRedSocial(config.instagram,"instagram")} target="_blank" rel="noopener noreferrer" title="Instagram"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-            <Instagram size={19}/>
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+            <Instagram size={21}/>
           </a>
         )}
         {config.facebook && (
           <a href={linkRedSocial(config.facebook,"facebook")} target="_blank" rel="noopener noreferrer" title="Facebook"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 via-blue-600 to-blue-800 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-            <Facebook size={19}/>
+            className="w-12 h-12 rounded-full bg-[#1877F2] text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+            <Facebook size={21} fill="white"/>
           </a>
         )}
         {config.tiktok && (
           <a href={linkRedSocial(config.tiktok,"tiktok")} target="_blank" rel="noopener noreferrer" title="TikTok"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-cyan-400 via-gray-900 to-pink-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-            <Music2 size={19}/>
+            className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-lg ring-2 ring-white/50 hover:scale-110 transition-transform">
+            <Music2 size={21}/>
           </a>
         )}
       </div>
