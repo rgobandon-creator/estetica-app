@@ -14,15 +14,16 @@ import ReservasAdmin from './pages/ReservasAdmin'
 import Configuracion from './pages/Configuracion'
 import Profesionales from './pages/Profesionales'
 
-function Layout({ user, onLogout }) {
+function Layout({ user, perfil, onLogout }) {
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const location = useLocation();
+  const esAdmin = perfil?.rol !== "empleada";
 
   useEffect(() => { setSidebarAbierto(false); }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} onLogout={onLogout} open={sidebarAbierto} onClose={() => setSidebarAbierto(false)} />
+      <Sidebar user={user} perfil={perfil} onLogout={onLogout} open={sidebarAbierto} onClose={() => setSidebarAbierto(false)} />
 
       {/* Barra superior visible solo en móvil */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-100 h-14 flex items-center px-4 gap-3">
@@ -37,15 +38,15 @@ function Layout({ user, onLogout }) {
 
       <main className="flex-1 overflow-auto min-w-0 pt-14 lg:pt-0">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/agenda" element={<Agenda />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/cobros" element={<Cobros />} />
-          <Route path="/servicios" element={<Servicios />} />
-          <Route path="/reservas-admin" element={<ReservasAdmin />} />
-          <Route path="/configuracion" element={<Configuracion />} />
-          <Route path="/profesionales" element={<Profesionales />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="/" element={esAdmin ? <Dashboard /> : <Navigate to="/agenda" />} />
+          <Route path="/agenda" element={<Agenda soloProfesional={esAdmin ? null : perfil?.profesional_nombre} />} />
+          <Route path="/clientes" element={esAdmin ? <Clientes /> : <Navigate to="/agenda" />} />
+          <Route path="/cobros" element={esAdmin ? <Cobros /> : <Navigate to="/agenda" />} />
+          <Route path="/servicios" element={esAdmin ? <Servicios /> : <Navigate to="/agenda" />} />
+          <Route path="/reservas-admin" element={esAdmin ? <ReservasAdmin /> : <Navigate to="/agenda" />} />
+          <Route path="/configuracion" element={esAdmin ? <Configuracion /> : <Navigate to="/agenda" />} />
+          <Route path="/profesionales" element={esAdmin ? <Profesionales /> : <Navigate to="/agenda" />} />
+          <Route path="*" element={<Navigate to={esAdmin ? "/" : "/agenda"} />} />
         </Routes>
       </main>
     </div>
@@ -54,15 +55,25 @@ function Layout({ user, onLogout }) {
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [perfil, setPerfil] = useState(null)
   const [cargando, setCargando] = useState(true)
 
+  async function cargarPerfil(userId) {
+    if (!userId) { setPerfil(null); return; }
+    const { data } = await supabase.from("perfiles").select("*").eq("id", userId).maybeSingle();
+    // Si no existe fila en "perfiles" para este usuario, se asume admin (compatibilidad con cuentas antiguas)
+    setPerfil(data || { rol: "admin" });
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
+      await cargarPerfil(session?.user?.id)
       setCargando(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      cargarPerfil(session?.user?.id)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -70,6 +81,7 @@ export default function App() {
   async function handleLogout() {
     await supabase.auth.signOut()
     setUser(null)
+    setPerfil(null)
   }
 
   if (cargando) return (
@@ -83,7 +95,7 @@ export default function App() {
       <Routes>
         <Route path="/reservar" element={<ReservaPublica />} />
         <Route path="/*" element={
-          user ? <Layout user={user} onLogout={handleLogout}/> : <Login onLogin={setUser}/>
+          user ? <Layout user={user} perfil={perfil} onLogout={handleLogout}/> : <Login onLogin={setUser}/>
         }/>
       </Routes>
     </BrowserRouter>

@@ -357,7 +357,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   );
 }
 
-export default function Agenda() {
+export default function Agenda({ soloProfesional }) {
   const [modal, setModal] = useState(false);
   const [citaEditando, setCitaEditando] = useState(null);
   const [citaCobro, setCitaCobro] = useState(null);
@@ -385,12 +385,14 @@ export default function Agenda() {
 
   async function cargarCitas() {
     setCargando(true);
-    const {data}=await supabase.from("citas").select("*").eq("fecha",diaSeleccionado).order("hora");
+    let query = supabase.from("citas").select("*").eq("fecha",diaSeleccionado).order("hora");
+    if (soloProfesional) query = query.eq("profesional", soloProfesional);
+    const {data}=await query;
     setCitas(data||[]);
     setCargando(false);
   }
 
-  useEffect(()=>{cargarCitas();},[diaSeleccionado]);
+  useEffect(()=>{cargarCitas();},[diaSeleccionado, soloProfesional]);
 
   const citasActivas = citas.filter(c=>c.estado!=="cancelada");
   const citasCanceladas = citas.filter(c=>c.estado==="cancelada");
@@ -412,10 +414,12 @@ export default function Agenda() {
           <h1 className="text-xl font-semibold text-gray-900">Agenda</h1>
           <p className="text-sm text-gray-400 mt-0.5">{diaSeleccionado?formatearFecha(diaSeleccionado):""}</p>
         </div>
-        <button onClick={()=>setModal(true)}
-          className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
-          <Plus size={16}/> Nueva cita
-        </button>
+        {!soloProfesional && (
+          <button onClick={()=>setModal(true)}
+            className="flex items-center gap-2 bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors">
+            <Plus size={16}/> Nueva cita
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-4">
@@ -443,13 +447,13 @@ export default function Agenda() {
         {!cargando&&citasActivas.length===0?(
           <div className="text-center py-10 text-gray-400">
             <p className="text-sm">No hay citas agendadas</p>
-            <button onClick={()=>setModal(true)} className="mt-3 text-rose-500 text-sm hover:underline">+ Agregar cita</button>
+            {!soloProfesional && <button onClick={()=>setModal(true)} className="mt-3 text-rose-500 text-sm hover:underline">+ Agregar cita</button>}
           </div>
         ):(
           <div className="space-y-3">
             {citasActivas.map(c=>(
-              <div key={c.id} onClick={()=>setCitaEditando(c)}
-                className="flex flex-wrap items-center gap-3 sm:gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors cursor-pointer">
+              <div key={c.id} onClick={()=>{if(!soloProfesional)setCitaEditando(c);}}
+                className={`flex flex-wrap items-center gap-3 sm:gap-4 p-4 rounded-xl bg-gray-50 hover:bg-rose-50 transition-colors ${soloProfesional?"":"cursor-pointer"}`}>
                 <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                   <div className="flex-shrink-0 text-center w-12 sm:w-14">
                     <p className="text-sm font-semibold text-rose-500">{c.hora}</p>

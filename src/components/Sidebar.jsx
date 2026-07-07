@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-export default function Sidebar({ user, onLogout, open, onClose }) {
+export default function Sidebar({ user, perfil, onLogout, open, onClose }) {
   const [pendientes, setPendientes] = useState(0);
   const [nombreSalon, setNombreSalon] = useState("GlowSuite");
+  const esAdmin = perfil?.rol !== "empleada";
   const emailCorto = user?.email?.split("@")[0] || "Usuario";
   const iniciales = emailCorto.slice(0, 2).toUpperCase();
 
@@ -24,6 +25,7 @@ export default function Sidebar({ user, onLogout, open, onClose }) {
     window.addEventListener("salon_config_updated", cargarNombre);
 
     async function contarPendientes() {
+      if (!esAdmin) return;
       try {
         const { count } = await supabase
           .from("reservas_publicas")
@@ -41,7 +43,7 @@ export default function Sidebar({ user, onLogout, open, onClose }) {
     };
   }, []);
 
-  const nav = [
+  const navCompleto = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/agenda", icon: Calendar, label: "Agenda" },
     { to: "/reservas-admin", icon: CalendarCheck, label: "Reservas", badge: pendientes },
@@ -50,6 +52,7 @@ export default function Sidebar({ user, onLogout, open, onClose }) {
     { to: "/servicios", icon: Scissors, label: "Servicios" },
     { to: "/profesionales", icon: UserCog, label: "Profesionales" },
   ];
+  const nav = esAdmin ? navCompleto : navCompleto.filter(n => n.to === "/agenda");
 
   return (
     <>
@@ -95,18 +98,20 @@ export default function Sidebar({ user, onLogout, open, onClose }) {
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-100 space-y-2">
-          <NavLink to="/configuracion" onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors">
-            <Settings size={18} />
-            Configuración
-          </NavLink>
+          {esAdmin && (
+            <NavLink to="/configuracion" onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors">
+              <Settings size={18} />
+              Configuración
+            </NavLink>
+          )}
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-xs font-semibold text-rose-600 flex-shrink-0">
               {iniciales}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-gray-700 truncate">{emailCorto}</p>
-              <p className="text-xs text-gray-400">Admin</p>
+              <p className="text-xs text-gray-400">{esAdmin ? "Admin" : "Empleada"}</p>
             </div>
             <button onClick={onLogout}
               className="p-1 hover:bg-red-50 rounded-lg transition-colors group" title="Cerrar sesión">
