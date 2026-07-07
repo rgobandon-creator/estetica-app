@@ -366,6 +366,9 @@ export default function Agenda({ soloProfesional }) {
   const [paginaSemana, setPaginaSemana] = useState(0);
   const hoy = new Date().toLocaleDateString("en-CA");
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy);
+  const [vista, setVista] = useState("semana"); // "semana" | "mes"
+  const [mesActual, setMesActual] = useState(() => { const d = new Date(); return { anio: d.getFullYear(), mes: d.getMonth() }; });
+  const [conteoMes, setConteoMes] = useState({});
 
   function generarSemana(offset) {
     const dias=[];
@@ -382,6 +385,34 @@ export default function Agenda({ soloProfesional }) {
   }
 
   const diasSemana = generarSemana(paginaSemana);
+
+  function generarMes(anio, mes) {
+    const primerDia = new Date(anio, mes, 1);
+    const ultimoDia = new Date(anio, mes + 1, 0);
+    const inicioOffset = (primerDia.getDay() + 6) % 7; // lunes=0
+    const celdas = [];
+    for (let i = 0; i < inicioOffset; i++) celdas.push(null);
+    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+      const f = new Date(anio, mes, dia);
+      celdas.push({ fecha: f.toLocaleDateString("en-CA"), numero: dia });
+    }
+    return celdas;
+  }
+
+  const celdasMes = generarMes(mesActual.anio, mesActual.mes);
+
+  async function cargarConteoMes() {
+    const inicio = new Date(mesActual.anio, mesActual.mes, 1).toLocaleDateString("en-CA");
+    const fin = new Date(mesActual.anio, mesActual.mes + 1, 0).toLocaleDateString("en-CA");
+    let query = supabase.from("citas").select("fecha").neq("estado","cancelada").gte("fecha",inicio).lte("fecha",fin);
+    if (soloProfesional) query = query.eq("profesional", soloProfesional);
+    const { data } = await query;
+    const conteo = {};
+    (data||[]).forEach(c => { conteo[c.fecha] = (conteo[c.fecha]||0) + 1; });
+    setConteoMes(conteo);
+  }
+
+  useEffect(() => { if (vista === "mes") cargarConteoMes(); }, [vista, mesActual, soloProfesional]);
 
   async function cargarCitas() {
     setCargando(true);
@@ -422,23 +453,60 @@ export default function Agenda({ soloProfesional }) {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={()=>setPaginaSemana(p=>p-1)} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} className="text-gray-500"/></button>
-          <span className="text-xs font-medium text-gray-500">
-            {paginaSemana===0?"Semana actual":paginaSemana>0?`+${paginaSemana} semana${paginaSemana>1?"s":""}`:`${Math.abs(paginaSemana)} semana${Math.abs(paginaSemana)>1?"s":""} atrás`}
-          </span>
-          <button onClick={()=>setPaginaSemana(p=>p+1)} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:grid sm:grid-cols-6 sm:overflow-visible">
-          {diasSemana.map(d=>(
-            <button key={d.fecha} onClick={()=>setDiaSeleccionado(d.fecha)}
-              className={`flex-shrink-0 w-14 sm:w-auto flex flex-col items-center py-2 rounded-lg transition-colors text-xs font-medium ${diaSeleccionado===d.fecha?"bg-rose-500 text-white":d.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200":"hover:bg-gray-50 text-gray-600"}`}>
-              {d.label.split(" ").map((p,i)=><span key={i} className={i===1?"text-base font-bold mt-0.5":""}>{p}</span>)}
-            </button>
-          ))}
+      <div className="flex justify-end">
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button onClick={()=>setVista("semana")} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${vista==="semana"?"bg-white text-rose-600 shadow-sm":"text-gray-500"}`}>Semana</button>
+          <button onClick={()=>setVista("mes")} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${vista==="mes"?"bg-white text-rose-600 shadow-sm":"text-gray-500"}`}>Mes</button>
         </div>
       </div>
+
+      {vista === "semana" ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={()=>setPaginaSemana(p=>p-1)} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} className="text-gray-500"/></button>
+            <span className="text-xs font-medium text-gray-500">
+              {paginaSemana===0?"Semana actual":paginaSemana>0?`+${paginaSemana} semana${paginaSemana>1?"s":""}`:`${Math.abs(paginaSemana)} semana${Math.abs(paginaSemana)>1?"s":""} atrás`}
+            </span>
+            <button onClick={()=>setPaginaSemana(p=>p+1)} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:grid sm:grid-cols-6 sm:overflow-visible">
+            {diasSemana.map(d=>(
+              <button key={d.fecha} onClick={()=>setDiaSeleccionado(d.fecha)}
+                className={`flex-shrink-0 w-14 sm:w-auto flex flex-col items-center py-2 rounded-lg transition-colors text-xs font-medium ${diaSeleccionado===d.fecha?"bg-rose-500 text-white":d.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200":"hover:bg-gray-50 text-gray-600"}`}>
+                {d.label.split(" ").map((p,i)=><span key={i} className={i===1?"text-base font-bold mt-0.5":""}>{p}</span>)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes-1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
+              className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} className="text-gray-500"/></button>
+            <span className="text-sm font-medium text-gray-700 capitalize">
+              {new Date(mesActual.anio,mesActual.mes,1).toLocaleDateString("es-EC",{month:"long",year:"numeric"})}
+            </span>
+            <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes+1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
+              className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-gray-400 mb-1">
+            {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d=><div key={d}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {celdasMes.map((c,i)=> c===null ? <div key={"vacio"+i}/> : (
+              <button key={c.fecha} onClick={()=>{setDiaSeleccionado(c.fecha);setVista("semana");}}
+                className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-xs sm:text-sm transition-colors
+                  ${diaSeleccionado===c.fecha?"bg-rose-500 text-white font-semibold":c.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200 font-medium":"hover:bg-gray-50 text-gray-600"}`}>
+                {c.numero}
+                {conteoMes[c.fecha] > 0 && (
+                  <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${diaSeleccionado===c.fecha?"bg-white":"bg-rose-400"}`}/>
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">🔴 Días con citas · Toca un día para ver el detalle</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <h2 className="font-medium text-gray-900 text-sm mb-4">
