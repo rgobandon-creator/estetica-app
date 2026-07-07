@@ -104,7 +104,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
   const [clienteInfo, setClienteInfo] = useState(null);
   const [esNuevo, setEsNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ telefono:"", email:"", alergias:"Ninguna" });
-  const [form, setForm] = useState(citaEditar || { cliente:"", cedula:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
+  const [form, setForm] = useState(citaEditar ? {...citaEditar, cedula: citaEditar.cedula||"", profesional: citaEditar.profesional||""} : { cliente:"", cedula:"", servicio:"", profesional:"", fecha: fechaInicial||new Date().toLocaleDateString("en-CA"), hora:"", duracion:60, precio:0, estado:"confirmada" });
   const [montoRecibido, setMontoRecibido] = useState(0);
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!citaEditar?.id;
@@ -235,7 +235,7 @@ function NuevaCitaModal({ onClose, onGuardada, fechaInicial, citaEditar }) {
             <input placeholder="10 dígitos" value={form.cedula} inputMode="numeric" maxLength={10}
               onChange={e=>buscarPorCedula(e.target.value.replace(/\D/g,""))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"/>
-            {form.cedula.length===10 && !validarCedulaEcuador(form.cedula) && (
+            {(form.cedula||"").length===10 && !validarCedulaEcuador(form.cedula) && (
               <p className="text-xs text-red-500 mt-1">Cédula no válida</p>
             )}
           </div>

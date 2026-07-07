@@ -83,15 +83,16 @@ export default function ReservasAdmin() {
 
     if (nuevoEstado === "confirmada" && reserva) {
       if (citaExistente) {
-        await supabase.from("citas").update({ estado: "confirmada" }).eq("id", citaExistente.id);
+        await supabase.from("citas").update({ estado: "confirmada", profesional: reserva.profesional || citaExistente.profesional || null }).eq("id", citaExistente.id);
       } else {
         const precioServicio = servicios.find(s => s.nombre === reserva.servicio)?.precio;
         const abono = Number(reserva.abono) || 0;
 
         const { data: citaNueva } = await supabase.from("citas").insert([{
           cliente: reserva.nombre,
+          cedula: reserva.cedula || null,
           servicio: reserva.servicio,
-          profesional: "Por asignar",
+          profesional: reserva.profesional || null,
           fecha: reserva.fecha,
           hora: reserva.hora,
           duracion: 60,
