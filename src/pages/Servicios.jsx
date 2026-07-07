@@ -9,7 +9,7 @@ function ServicioModal({ servicio, iconos, onClose, onGuardado }) {
   const [form, setForm] = useState(servicio || { nombre:"", duracion:30, precio:0, categoria:"Cabello", orden:0 });
   const [nuevaCategoria, setNuevaCategoria] = useState(false);
   const [catNombre, setCatNombre] = useState("");
-  const [catEmoji, setCatEmoji] = useState("");
+  const [catEmoji, setCatEmoji] = useState("✨");
   const [cargando, setCargando] = useState(false);
   const esEdicion = !!servicio?.id;
 
