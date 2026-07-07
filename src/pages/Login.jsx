@@ -44,7 +44,7 @@ export default function Login({ onLogin }) {
           <div className="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center mb-3">
             <Sparkles size={24} className="text-white" />
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">GlowSuite</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Zagio</h1>
           <p className="text-sm text-gray-400 mt-0.5">Sistema de gestión estética</p>
         </div>
 

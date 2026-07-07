@@ -5,7 +5,7 @@ import { Save, Sparkles, Clock, CreditCard, Copy, Check } from "lucide-react";
 const CONFIG_KEY = "salon_config";
 
 const DEFAULT_CONFIG = {
-  nombre: "GlowSuite Salón",
+  nombre: "Zagio | Estudio estético",
   descripcion: "Reserva tu cita en línea y asegura tu lugar con un abono de $5",
   whatsapp: "0997201130",
   horario_inicio: "09:00",
