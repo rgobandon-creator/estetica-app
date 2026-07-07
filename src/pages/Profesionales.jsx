@@ -134,12 +134,144 @@ function ProfesionalModal({ profesional, servicios, onClose, onGuardado }) {
   );
 }
 
+function FichaProfesional({ profesional, onClose, onEditar }) {
+  const [periodo, setPeriodo] = useState("semana"); // dia | semana | mes
+  const [citas, setCitas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  function rangoFechas() {
+    const hoy = new Date();
+    if (periodo === "dia") {
+      const f = hoy.toLocaleDateString("en-CA");
+      return { inicio: f, fin: f };
+    }
+    if (periodo === "semana") {
+      const lunes = new Date(hoy);
+      lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+      const domingo = new Date(lunes);
+      domingo.setDate(lunes.getDate() + 6);
+      return { inicio: lunes.toLocaleDateString("en-CA"), fin: domingo.toLocaleDateString("en-CA") };
+    }
+    const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    return { inicio: inicio.toLocaleDateString("en-CA"), fin: fin.toLocaleDateString("en-CA") };
+  }
+
+  useEffect(() => {
+    async function cargar() {
+      setCargando(true);
+      const { inicio, fin } = rangoFechas();
+      const { data } = await supabase.from("citas").select("*")
+        .eq("profesional", profesional.nombre)
+        .neq("estado", "cancelada")
+        .gte("fecha", inicio).lte("fecha", fin)
+        .order("fecha").order("hora");
+      setCitas(data || []);
+      setCargando(false);
+    }
+    cargar();
+  }, [periodo, profesional.nombre]);
+
+  const totalCitas = citas.length;
+  const totalFacturado = citas.filter(c => c.estado === "cobrada").reduce((s, c) => s + Number(c.precio || 0), 0);
+  const porServicio = citas.reduce((acc, c) => { acc[c.servicio] = (acc[c.servicio] || 0) + 1; return acc; }, {});
+
+  const etiquetaPeriodo = { dia: "Hoy", semana: "Esta semana", mes: "Este mes" };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-lg font-semibold text-rose-600">
+              {profesional.nombre?.slice(0,2).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900">{profesional.nombre}</h2>
+              <p className="text-xs text-gray-400">{profesional.horario_inicio} – {profesional.horario_fin}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={onEditar} className="p-2 hover:bg-gray-100 rounded-lg" title="Editar">
+              <Pencil size={16} className="text-gray-400"/>
+            </button>
+            <button onClick={onClose}><X size={18} className="text-gray-400"/></button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            {["dia","semana","mes"].map(p => (
+              <button key={p} onClick={()=>setPeriodo(p)}
+                className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${periodo===p?"bg-white text-rose-600 shadow-sm":"text-gray-500"}`}>
+                {etiquetaPeriodo[p]}
+              </button>
+            ))}
+          </div>
+
+          {cargando ? (
+            <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"/></div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-rose-50 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-semibold text-rose-600">{totalCitas}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Citas ({etiquetaPeriodo[periodo].toLowerCase()})</p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-semibold text-green-600">${totalFacturado.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Facturado (cobrado)</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Servicios realizados</p>
+                {Object.keys(porServicio).length === 0 ? (
+                  <p className="text-xs text-gray-400">Sin citas en este período</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {Object.entries(porServicio).sort(([,a],[,b])=>b-a).map(([servicio, cant]) => (
+                      <div key={servicio} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-gray-700">{servicio}</span>
+                        <span className="font-medium text-gray-500">{cant}×</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Detalle de citas</p>
+                {citas.length === 0 ? (
+                  <p className="text-xs text-gray-400">Nada que mostrar</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {citas.map(c => (
+                      <div key={c.id} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg bg-gray-50">
+                        <span className="text-gray-600">{c.fecha} · {c.hora} — {c.cliente}</span>
+                        <span className={`font-medium ${c.estado==="cobrada"?"text-green-600":"text-blue-500"}`}>
+                          {c.estado==="cobrada"?`$${c.precio}`:"pendiente"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Profesionales() {
   const [profesionales, setProfesionales] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [verFicha, setVerFicha] = useState(null);
 
   async function cargar() {
     setCargando(true);
@@ -159,6 +291,10 @@ export default function Profesionales() {
       {(modal || editando) && (
         <ProfesionalModal profesional={editando} servicios={servicios}
           onClose={() => { setModal(false); setEditando(null); }} onGuardado={cargar}/>
+      )}
+      {verFicha && !editando && (
+        <FichaProfesional profesional={verFicha} onClose={()=>setVerFicha(null)}
+          onEditar={()=>{setEditando(verFicha);setVerFicha(null);}}/>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -182,7 +318,7 @@ export default function Profesionales() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {profesionales.map(p => (
-            <div key={p.id} onClick={() => setEditando(p)}
+            <div key={p.id} onClick={() => setVerFicha(p)}
               className="bg-white rounded-xl border border-gray-100 p-5 hover:border-rose-200 transition-colors cursor-pointer">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -196,7 +332,9 @@ export default function Profesionales() {
                 </div>
                 <div className="flex items-center gap-2">
                   {!p.activo && <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Inactivo</span>}
-                  <Pencil size={14} className="text-gray-300"/>
+                  <button onClick={(e)=>{e.stopPropagation();setEditando(p);}} className="p-1 hover:bg-gray-100 rounded">
+                    <Pencil size={14} className="text-gray-300"/>
+                  </button>
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">

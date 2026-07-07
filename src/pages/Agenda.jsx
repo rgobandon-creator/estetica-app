@@ -480,29 +480,31 @@ export default function Agenda({ soloProfesional }) {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes-1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} className="text-gray-500"/></button>
-            <span className="text-sm font-medium text-gray-700 capitalize">
-              {new Date(mesActual.anio,mesActual.mes,1).toLocaleDateString("es-EC",{month:"long",year:"numeric"})}
-            </span>
-            <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes+1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-gray-400 mb-1">
-            {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d=><div key={d}>{d}</div>)}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {celdasMes.map((c,i)=> c===null ? <div key={"vacio"+i}/> : (
-              <button key={c.fecha} onClick={()=>{setDiaSeleccionado(c.fecha);setVista("semana");}}
-                className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-xs sm:text-sm transition-colors
-                  ${diaSeleccionado===c.fecha?"bg-rose-500 text-white font-semibold":c.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200 font-medium":"hover:bg-gray-50 text-gray-600"}`}>
-                {c.numero}
-                {conteoMes[c.fecha] > 0 && (
-                  <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${diaSeleccionado===c.fecha?"bg-white":"bg-rose-400"}`}/>
-                )}
-              </button>
-            ))}
+          <div className="max-w-xs mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes-1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
+                className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} className="text-gray-500"/></button>
+              <span className="text-sm font-medium text-gray-700 capitalize">
+                {new Date(mesActual.anio,mesActual.mes,1).toLocaleDateString("es-EC",{month:"long",year:"numeric"})}
+              </span>
+              <button onClick={()=>setMesActual(m=>{const d=new Date(m.anio,m.mes+1,1);return{anio:d.getFullYear(),mes:d.getMonth()};})}
+                className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} className="text-gray-500"/></button>
+            </div>
+            <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-medium text-gray-400 mb-1">
+              {["L","M","X","J","V","S","D"].map((d,i)=><div key={i}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-0.5">
+              {celdasMes.map((c,i)=> c===null ? <div key={"vacio"+i}/> : (
+                <button key={c.fecha} onClick={()=>{setDiaSeleccionado(c.fecha);setVista("semana");}}
+                  className={`relative w-8 h-8 sm:w-9 sm:h-9 mx-auto flex flex-col items-center justify-center rounded-lg text-[11px] sm:text-xs transition-colors
+                    ${diaSeleccionado===c.fecha?"bg-rose-500 text-white font-semibold":c.fecha===hoy?"bg-rose-50 text-rose-600 border border-rose-200 font-medium":"hover:bg-gray-50 text-gray-600"}`}>
+                  {c.numero}
+                  {conteoMes[c.fecha] > 0 && (
+                    <span className={`absolute bottom-0.5 w-1 h-1 rounded-full ${diaSeleccionado===c.fecha?"bg-white":"bg-rose-400"}`}/>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">🔴 Días con citas · Toca un día para ver el detalle</p>
         </div>
