@@ -82,6 +82,29 @@ export default function ReservasAdmin() {
     await supabase.from("reservas_publicas").update({ estado: nuevoEstado }).eq("id", id);
 
     if (nuevoEstado === "confirmada" && reserva) {
+      // Sincronizar con la tabla de clientes (por cédula si existe, si no por nombre)
+      let clienteDB = null;
+      if (reserva.cedula) {
+        const { data } = await supabase.from("clientes").select("*").eq("cedula", reserva.cedula).maybeSingle();
+        clienteDB = data;
+      }
+      if (!clienteDB) {
+        const { data } = await supabase.from("clientes").select("*").eq("nombre", reserva.nombre).maybeSingle();
+        clienteDB = data;
+      }
+      if (clienteDB) {
+        await supabase.from("clientes").update({
+          cedula: clienteDB.cedula || reserva.cedula || null,
+          telefono: clienteDB.telefono || reserva.telefono || null,
+          email: clienteDB.email || reserva.email || null,
+        }).eq("id", clienteDB.id);
+      } else {
+        await supabase.from("clientes").insert([{
+          nombre: reserva.nombre, cedula: reserva.cedula || null,
+          telefono: reserva.telefono || null, email: reserva.email || null,
+        }]);
+      }
+
       if (citaExistente) {
         await supabase.from("citas").update({ estado: "confirmada", profesional: reserva.profesional || citaExistente.profesional || null }).eq("id", citaExistente.id);
       } else {
